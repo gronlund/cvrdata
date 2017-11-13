@@ -19,21 +19,16 @@ def run_init():
     crdb.create_tables()
 
 
-def download_dawa(target_path):
-    """ Download newst dawa file """
-    target = os.path.join(target_path, 'dawa.csv')    
-    info_print('call wget  https://dawa.aws.dk/adresser?format=csv -O {0}'.format(target))
-    os.system('wget  https://dawa.aws.dk/adresser?format=csv -O {0}'.format(target))
 
 
 def fill_dawa(dawa_file):
     info_print('Using File {0}'.format(dawa_file))
-    crdb = make_cvr_db.MakeCvrDatabase()
+    crdb = cvr_makedb.MakeCvrDatabase()
     crdb.fill_dawa_table(dawa_file=dawa_file)
 
 
 def fill_employment(db_model, file_path):
-    crdb = make_cvr_db.MakeCvrDatabase(db_model)
+    crdb = cvr_makedb.MakeCvrDatabase(db_model)
     crdb.fill_employment_tables_from_file(file_path)
 
 
@@ -55,13 +50,11 @@ def run_small_test(ecvr):
                  4006829870, 4002005199, 4001726704, 5768770, 4006916557, 4006916557, 4006511400, 4006372756,
                  4006372744, 4006510742, 4006372756, 4006829870, 4006491007, 4056080, 4001815333, 4006395397,
                  4001075071, 4001251542, 3214807]
-    #companies = []
-    # companies = companies[0:2]
     # companies = [4001575583]
-    #companies = [4000981898]
-    #companies = [4001582635]
+    # companies = [4000981898]
+    # companies = [4001582635]
     # companies = [4006898357]
-    #companies = companies[0:2]
+    # companies = companies[0:2]
     # print('insert company')
     ecvr.update_entity(companies)
     # is a person
@@ -102,7 +95,6 @@ if __name__ == '__main__':
     parser.add_argument('-create_views', default=False, help='Create Views', dest='create_views', action='store_true')
     parser.add_argument('-fill_dawa', default=False, help='Download and Fill Dawa Address Table', dest='fill_dawa',
                         action='store_true')
-
     parser.add_argument('-fill_emp', default=False, help='Fill Employment Table With External Data', dest='fill_emp',
                         action='store_true')
     parser.add_argument('-small_test', default=False, dest='small_test', action='store_true', help="Small Test")
@@ -115,8 +107,6 @@ if __name__ == '__main__':
     #                     action='store_true')
     parser.add_argument('-log', default=False, dest='logging', help='enable logging', action='store_true')
     parser.add_argument('-resume', default=False, dest='resume',
-                        help='resume cvr update - mainly for debugging restart', action='store_true')
-    parser.add_argument('-time_test', default=False, dest='time_test',
                         help='resume cvr update - mainly for debugging restart', action='store_true')
 
     logging.basicConfig(level=logging.INFO)
@@ -160,16 +150,3 @@ if __name__ == '__main__':
     if args.enh is not None:
         info_print('Update specific enhedsnummer:')
         cvr.update_entity(args.enh)
-    # if args.time_test:
-    #     import cProfile, pstats, io
-    #     pr = cProfile.Profile()
-    #     cvr = CvrConnection(db_engine, vals['disable'])
-    #     pr.enable()
-    #     for i in range(100):
-    #         run_small_test(cvr)
-    #     pr.disable()
-    #     s = io.StringIO()
-    #     sortby = 'cumtime'
-    #     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    #     ps.print_stats()
-    #     print(s.getvalue())

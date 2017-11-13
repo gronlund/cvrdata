@@ -117,7 +117,7 @@ class CvrConnection(object):
             else:
                 self.download_all_dicts(filename)
         else:
-            updatetime, _, gunits_to_update = self.get_update_time()
+            updatetime, units_to_update = self.get_update_time()
             updatetime = updatetime - datetime.timedelta(hours=2)  # just to be sure
             filename = self.download_all_dicts_from_timestamp(updatetime)
             # filename = os.path.join(self.datapath, 'cvr_update.json')
@@ -277,7 +277,7 @@ class CvrConnection(object):
         session = get_session()
         for table in table_models:
             query = session.query(table.enhedsnummer, table.samtid, table.sidstopdateret)
-            existing_data = [(x[0], x[1], x[2], x[3]) for x in query.all()]
+            existing_data = [(x[0], x[1], x[2]) for x in query.all()]
             tmp = {a: self.update_info(samtid=b, sidstopdateret=c) for (a, b, c) in existing_data}
             enh_samtid_map.update(tmp)
         print('Id map done')

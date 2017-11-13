@@ -13,8 +13,8 @@ def insert_values(dicts, parser):
 
     Args:
     -----
-      dicts: lists of dictionaries
-      parser: parser that extracts the data
+    @param dicts: list, lists of cvr data dicts
+    @param parser: parser, that extracts the data
     """
 
     for j, d in enumerate(dicts):
@@ -87,18 +87,15 @@ class Mapping(object):
         :returns
             missing, set of elements still not mapped
         """
-        print('update missing ')
         missing = set()
         if len(self.unmapped) > 0:
-            # print('mapping query: ',
-            # self.query.where(self.keycol.in_(self.unmapped)).compile(compile_kwargs={"literal_binds": True}))
             session = Session()
-
-            print(self.keycol, self.val)
-            query = [self.keycol, self.val] if self.val is not None else [self.keycol]
-            qres = session.query(*query).filter(self.keycol.in_(self.unmapped)).all()
+            if self.keylen == 1:
+                query = session.query(self.keycol, self.val).filter(self.keycol.in_(self.unmapped))
+            else:
+                query = session.query(*self.keycol, self.val).filter(tuple_(*self.keycol).in_(self.unmapped))
+            qres = query.all()
             res = [x for x in qres]
-
             if self.keylen == 1:
                 new = {x[0]: x[-1] for x in res}
             else:
@@ -106,11 +103,9 @@ class Mapping(object):
                 new = {x[:self.keylen]: x[-1] for x in res}
             new_keys = set(new.keys())
             assert new_keys.issubset(self.unmapped)
-            # fix the identity mappings
             missing = self.unmapped - set(new.keys())
             self.mapped.update(new)
             self.unmapped = missing
-
         return missing
 
     def __getitem__(self, key):
@@ -136,8 +131,8 @@ class KeyStore(object):
                                                  keycol=alchemy_tables.Virksomhedsstatus.virksomhedsstatus)
         self.status_mapping = Mapping(val=alchemy_tables.Statuskode.statusid,
                                       keylen=2,
-                                      keycol=tuple_(alchemy_tables.Statuskode.statuskode,
-                                                    alchemy_tables.Statuskode.kreditoplysningskode))
+                                      keycol=(alchemy_tables.Statuskode.statuskode,
+                                              alchemy_tables.Statuskode.kreditoplysningskode))
         self.branche_mapping = Mapping(val=alchemy_tables.Branche.branchekode,
                                        keycol=alchemy_tables.Branche.branchekode)
         self.virksomhedsform_mapping = Mapping(val=alchemy_tables.Virksomhedsform.virksomhedsformkode,

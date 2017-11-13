@@ -45,8 +45,7 @@ class StatusKoderMap(fp.Parser):
     def insert(self, data):
         enh = data['enhedsNummer'] 
         for z in data['status']:
-            # print('DATA ')
-            val = (z['statusk'], z['kreditoplysningkode'])
+            val = (z['statuskode'], z['kreditoplysningkode'])
             if val[0] is None or val[1] is None:
                 print('what the fuck', val)
                 add_error('Statuskode', data)

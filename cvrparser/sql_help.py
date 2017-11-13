@@ -76,7 +76,6 @@ class SessionUpdateCache(SessionCache):
         # delete all keys
         flatten_dat = [x+y for (x, y) in self.cache]
         # print(self.session.query(self.table_class).filter(tuple_(*self.key_columns).in_(keys)).statement)
-        print('session update')
         session = create_session()
         session.query(self.table_class).filter(tuple_(*self.key_columns).in_(keys)).delete(synchronize_session=False)
         session.expire_all()
@@ -85,4 +84,3 @@ class SessionUpdateCache(SessionCache):
         session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
         session.commit()
         self.cache = []
-        print('session update done')

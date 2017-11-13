@@ -1,10 +1,10 @@
 import json
+import pytz
 from .sql_help import SessionInsertCache
 from .adresse import beliggenhedsadresse_to_str
 from dateutil.parser import parse as date_parse
 from . import alchemy_tables
-import pytz
-
+from .bug_report import add_error
 
 def get_date(st):
     """
@@ -36,7 +36,7 @@ def utc_transform(s):
         if d.utcoffset() is not None:
             return d.astimezone(pytz.utc)
         else:
-            print('naive date given - do not do that!!! - i will assume it is utc time anyways')
+            add_error('naive date given - do not do that!!! - i will assume it is utc time anyways', -1)
             # assert False, d
             return d.replace(tzinfo=pytz.utc)
     except Exception as e:
