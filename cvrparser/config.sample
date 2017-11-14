@@ -1,0 +1,9 @@
+[Global]
+host = <database host>
+user = <database user>
+port = <database port>
+passwd = <database password>
+charset = utf8mb4
+cvr_user = <username for elastic search cvr>
+cvr_passwd = <password to cvr elastic search>
+sql_type = <sql server used>
