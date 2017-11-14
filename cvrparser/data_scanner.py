@@ -202,7 +202,9 @@ class DataParser(object):
 
 
 class AddressParserFactory(object):
-    """ Simple Factory for making an adresse parser"""
+    """ Simple Factory for making an adresse parser
+    TODO: change to just add poststring if no dawa available
+    """
     def __init__(self):
         self.address_tables = None
         self.dawa_translater = None
