@@ -19,7 +19,7 @@ def get_session():
 
 class CvrConnection(object):
     """ Class for connecting and retrieving data from danish CVR register """
-    def __init__(self,  update_address=False):
+    def __init__(self, update_address=False):
         """ Sets everything needed for elasticsearch connection to Danish Business Authority for CVR data extraction
         consider moving elastic search connection into __init__
 
@@ -44,6 +44,7 @@ class CvrConnection(object):
                                             retry_on_timeout=True)
         self.elastic_search_scan_size = 128
         self.elastic_search_scroll_time = u'10m'
+        self.max_download_size = 1000  # max number of updates to download without scan scroll
         self.update_info = namedtuple('update_info', ['samtid', 'sidstopdateret'])
         self.dummy_date = datetime.datetime(year=1001, month=1, day=1, tzinfo=pytz.utc)
 
@@ -117,14 +118,17 @@ class CvrConnection(object):
             else:
                 self.download_all_dicts(filename)
         else:
-            updatetime, units_to_update = self.get_update_time()
-            updatetime = updatetime - datetime.timedelta(hours=2)  # just to be sure
-            filename = self.download_all_dicts_from_timestamp(updatetime)
-            # filename = os.path.join(self.datapath, 'cvr_update.json')
-        print('Start Updating Database')
+            updatetime, units_to_update = self.get_update_info()
+            if updatetime < (datetime.datetime.utcnow().replace(tzinfo=pytz.utc) - datetime.timedelta(days=7)):
+                update_time, units_to_update = self.optimize_download_updated(updatetime, units_to_update)
+            if len(units_to_update) < self.max_download_size:
+                pass
+            else:
+                updatetime = updatetime - datetime.timedelta(hours=2)  # just to be sure
+                filename = self.download_all_dicts_from_timestamp(updatetime)
+                # filename = os.path.join(self.datapath, 'cvr_update.json')
+            print('Start Updating Database')
         self.update_from_mixed_file(filename)
-        print('Data base updated - update last update time')
-        print('Last update time updated')
         if old_file_used and not resume_cvr_all:
             print('Inserted the old files - now update to newest version, i will call myself')
             self.update_all()
@@ -176,20 +180,34 @@ class CvrConnection(object):
         print('Updates Downloaded - File {0} written'.format(filename))
         return filename
 
-    def update_entity(self, enh):
-        """ Force download and update of given entities
+    def update_units(self, enh):
+        """ Force download and update of given units
          
         Args: 
         -----
-          enh: int, id of entity to update (enhedsnummer) must be of same type, penhed_type, company_type, person_type
+          enh: list , id of units to update (enhedsnummer)
         """
         data = self.get_entity(enh)
-        types = {x['_type'] for x in data}
-        assert len(types) == 1
-        data_type = data[0]['_type']
-        key = self.source_keymap[data_type]
-        dat = [x['_source'][key] for x in data]
-        self.update(dat, key)
+        # types = {x['_type'] for x in data}
+        # assert len(types) == 1
+        # data_type = data[0]['_type']
+        # key = self.source_keymap[data_type]
+        # dat = [x['_source'][key] for x in data]
+        # self.update(dat, key)
+        # types = [x['_type'] for x in data]
+        # keys = [self.source_keymap[key] for key in types]
+        # dat = [x['_source'][key] for x, key  in zip(data, keys)]
+        dicts = {x: list() for x in self.source_keymap.values()}
+        for dict in data:
+            dict_type = dict['_type']
+            key = self.source_keymap[dict_type]
+            dicts[key].append(data['_source'][key])
+            if len(dicts[key]) >= self.update_batch_size:
+                self.update(dicts[key], dict_type)
+                dicts[key].clear()
+        for enh_type, _dicts in dicts.items():
+            if len(_dicts) > 0:
+                self.update(_dicts, enh_type)
 
     def update(self, dicts, _type):
         """ Update given entities 
@@ -254,8 +272,8 @@ class CvrConnection(object):
         """ Insert data from dicts
 
         Args:
-          dicts: list of dicts with cvr data (Danish Business Authority)
-          enh_type: cvr object type
+        :param dicts: list of dicts with cvr data (Danish Business Authority)
+        :param enh_type: cvr object type
         """
         data_parser = data_scanner.DataParser(_type=enh_type)
         data_parser.parse_data(dicts)
@@ -299,7 +317,6 @@ class CvrConnection(object):
                     print('{0} updates cleared '.format(i))
                 raw_dat = json.loads(line)
                 keys = raw_dat.keys()
-                # assert len(keys) == 1, keys
                 dict_type_set = keys & self.source_keymap.values()  # intersects the two key sets
                 if len(dict_type_set) != 1:
                     add_error('BAD DICT DOWNLOADED', raw_dat)
@@ -320,8 +337,11 @@ class CvrConnection(object):
                 self.update(_dicts, enh_type)
         print('file read all updated')
 
-    def get_update_time(self):
-        """ Find units that needs updating and their sidstopdateret (last updated) """
+    def get_update_info(self):
+        """ Find units that needs updating and their sidstopdateret (last updated)
+
+        :return datetime (min sidstopdateret), list (enhedsnumer, sidstopdateret)
+        """
         enh_samtid_map = self.make_samtid_table()
         if len(enh_samtid_map) == 0:
             return self.dummy_date, self.dummy_date, []
@@ -330,7 +350,8 @@ class CvrConnection(object):
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('match_all')
         field_list = ['_id'] + ['{0}.sidstOpdateret'.format(key) for key in self.source_keymap.values()] + \
-                     ['{0}.samtId'.format(key) for key in self.source_keymap.values()]
+                     ['{0}.samtId'.format(key) for key in self.source_keymap.values()] + ['_type']
+
         print('field list to get', field_list)
         search = search.fields(fields=field_list)
         params = {'scroll': self.elastic_search_scroll_time, 'size': 10*self.elastic_search_scan_size}
@@ -345,26 +366,44 @@ class CvrConnection(object):
             if (i % 100000) == 0:
                 print('{0} units considered'.format(i))
             enhedsnummer = int(cvr_update.meta.id)
+            _type = cvr_update.meta._type
             raw_dat = cvr_update.to_dict()
             samtid = None
             sidstopdateret = None
+
             for k, v in raw_dat.items():
                 if k.endswith('samtId'):
                     samtid = v[0]
                 if k.endswith('sidstOpdateret'):
                     sidstopdateret = v[0]
+
             if sidstopdateret is None or samtid is None:
                 continue
             current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
             if samtid > current_update.samtid:
-                units_to_update.append(enhedsnummer)
                 utc_sidstopdateret = utc_transform(sidstopdateret)
-                if utc_sidstopdateret < oldest_sidstopdaret:
-                    oldest_enh = enhedsnummer
-                    oldest_dat = raw_dat
-                    oldest_sidstopdaret = utc_sidstopdateret
+                units_to_update.append((enhedsnummer, utc_sidstopdateret, _type))
         print('oldest sidstopdaret found', oldest_sidstopdaret, oldest_enh, oldest_dat)
-        return oldest_sidstopdaret, units_to_update
+        return min(x[1] for x in units_to_update), units_to_update
+
+    def optimize_download_updated(self, units):
+        """ Due to a missing sidstopdateret for employment updates in cvr
+        the sidstopdateret may be inaccurate and thus way to far back in time
+        Update the self.max_download_size oldest to see if that helps us use a reasonable sidstopdateret data
+        maybe it is actually the punits that gives the biggest issue here.
+
+        :param units:
+        :return:
+        """
+        if len(units) < self.max_download_size:
+            enh = [x[0] for x in units]
+            self.update_units(enh)
+            return None
+        units = sorted(units, key=lambda x: x[1])
+        first_enh = [x[0] for x in units[0:self.max_download_size]]
+        new_sidst_opdateret = units[self.max_download_size][1]
+        self.update_units(first_enh)
+        return new_sidst_opdateret
 
     def find_missing(self):
         """

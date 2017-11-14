@@ -28,13 +28,13 @@ def fill_dawa(dawa_file):
 
 
 def fill_employment(db_model, file_path):
-    crdb = cvr_makedb.MakeCvrDatabase(db_model)
+    crdb = cvr_makedb.MakeCvrDatabase()
     crdb.fill_employment_tables_from_file(file_path)
 
 
-def create_views(dbmodel):
+def create_views():
     """ Create database views """
-    crdb = make_cvr_db.MakeCvrDatabase(dbmodel)
+    crdb = cvr_makedb.MakeCvrDatabase()
     crdb.create_views()
 
 
@@ -56,15 +56,15 @@ def run_small_test(ecvr):
     # companies = [4006898357]
     # companies = companies[0:2]
     # print('insert company')
-    ecvr.update_entity(companies)
+    ecvr.update_units(companies)
     # is a person
     people = [4000034553, 4004192836, 4004194126, 4000145625, 4005983489]
     # people = [4000145625]
     print('insert people')
-    ecvr.update_entity(people)
+    ecvr.update_units(people)
     print('insert penhed')
     penhed = [4002535375, 4002241948, 4003231318]
-    ecvr.update_entity(penhed)
+    ecvr.update_units(penhed)
 
 
 def run_delete_test(cvr):
@@ -149,4 +149,4 @@ if __name__ == '__main__':
         cvr.update_all(args.resume)
     if args.enh is not None:
         info_print('Update specific enhedsnummer:')
-        cvr.update_entity(args.enh)
+        cvr.update_units(args.enh)
