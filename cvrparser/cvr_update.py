@@ -19,8 +19,6 @@ def run_init():
     crdb.create_tables()
 
 
-
-
 def fill_dawa(dawa_file):
     info_print('Using File {0}'.format(dawa_file))
     crdb = cvr_makedb.MakeCvrDatabase()
