@@ -63,14 +63,12 @@ parser_update = subparsers.add_parser('update', help='update data from erst')
 parser_update.add_argument('-a', '--use_address',
                            dest='use_address',
                            help='Enable Address Parsing - Requires Dawa download first - and is slower',
-                           type=bool,
                            default=False,
                            action='store_true',
                            )
 parser_update.add_argument('-r', '--resume',
                            dest='resume',
                            help='Resume parsing first file downloaded from erst.',
-                           type=bool,
                            default=False,
                            action='store_true'
                            )
@@ -88,21 +86,18 @@ parser_setup = subparsers.add_parser('dbsetup', help='Setup data base tables, vi
 parser_update.add_argument('-t', '--create_tables',
                            dest='create_tables',
                            help='Build tables before update. Build query index and views after first update',
-                           type=bool,
                            default=False,
                            action='store_true'
                            )
 parser_update.add_argument('-v', '--create_views',
                            dest='create_views',
                            help='Build useful data views',
-                           type=bool,
                            default=False,
                            action='store_true'
                            )
 parser_update.add_argument('-i', '--create_query_indexes',
                            dest='create_query_indexes',
                            help='Build useful query indexes - build after first update',
-                           type=bool,
                            default=False,
                            action='store_true'
                            )
