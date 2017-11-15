@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='Regnskaber',
+    name='cvrparser',
     version=0.1,
     url='https://github.com/gronlund/cvrdata',
     description=('A module for fetching Central Business Register data from the Danish Business Authority'),
