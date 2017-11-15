@@ -80,7 +80,7 @@ def interactive_configure_connection():
     config_values = {
         'Global': dict(
             host=host, port=port, user=user, passwd=passwd, database=database,
-            sql_type=sql_type, charset='utf8mb4',cvr_user=cvr_user, cvr_passwd=cvr_passwd
+            sql_type=sql_type, charset='utf8mb4',cvr_user=cvr_user, cvr_passwd=cvr_passwd, data_path=data_path
         )
     }
     _config = configparser.ConfigParser()
