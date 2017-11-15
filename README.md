@@ -23,6 +23,6 @@ Run the following command:
 ``pip install --process-dependency-links git+https://github.com/gronlund/cvrdata``
 
 or use
-''pip install -r requirements.txt''
+``pip install -r requirements.txt``
 
 This should install regnskaber as a module in your current python environment.
