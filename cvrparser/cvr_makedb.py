@@ -45,7 +45,7 @@ class MakeCvrDatabase(object):
             #     if chunk:
             #         f.write(chunk)
             #         f.flush()
-            for data in tqdm(r.iter_content(chunk_size=32*1024), total=total_length, unit='KB', unit_scale=False):
+            for data in tqdm(r.iter_content(chunk_size=32*1024), total=total_length, unit_scale=True):
                 f.write(data)
         return filename
         # os.system('wget  https://dawa.aws.dk/adresser?format=csv -O {0}'.format(target))
