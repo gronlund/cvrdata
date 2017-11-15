@@ -6,7 +6,6 @@ from . import alchemy_tables
 from . import create_views
 from .sql_help import SessionCache
 from . import create_session, config
-from clint.textui import progress
 from tqdm import tqdm
 
 class MakeCvrDatabase(object):
@@ -45,7 +44,7 @@ class MakeCvrDatabase(object):
             #     if chunk:
             #         f.write(chunk)
             #         f.flush()
-            for data in tqdm(r.iter_content(chunk_size=1024*1024), total=total_length, unit='MB'):
+            for data in tqdm(r.iter_content(chunk_size=2**20), total=total_length/20**20, unit='MB'):
                 f.write(data)
         return filename
         # os.system('wget  https://dawa.aws.dk/adresser?format=csv -O {0}'.format(target))
