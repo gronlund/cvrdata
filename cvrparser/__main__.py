@@ -66,7 +66,6 @@ parser_update.add_argument('-a', '--use_address',
                            type=bool,
                            default=False,
                            action='store_true',
-                           required=False
                            )
 parser_update.add_argument('-r', '--resume',
                            dest='resume',
@@ -91,24 +90,25 @@ parser_update.add_argument('-t', '--create_tables',
                            help='Build tables before update. Build query index and views after first update',
                            type=bool,
                            default=False,
-                           action='store_true',
-                           required=False)
+                           action='store_true'
+                           )
 parser_update.add_argument('-v', '--create_views',
                            dest='create_views',
                            help='Build useful data views',
                            type=bool,
                            default=False,
-                           action='store_true',
-                           required=False)
+                           action='store_true'
+                           )
 parser_update.add_argument('-i', '--create_query_indexes',
                            dest='create_query_indexes',
                            help='Build useful query indexes - build after first update',
                            type=bool,
                            default=False,
-                           action='store_true',
-                           required=False)
+                           action='store_true'
+                           )
 
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
+    print(args)
     getattr(Commands, args.pop('command'))(**args)
