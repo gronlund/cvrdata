@@ -1,5 +1,6 @@
 # coding: utf-8
-from sqlalchemy import BigInteger, Column, DateTime, Enum, Float, Index, Integer, JSON, SmallInteger, String, text, Text
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Float, Index, Integer, JSON, SmallInteger, String, text, \
+    Text, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from . import engine
 
@@ -32,8 +33,8 @@ class AarsbeskaeftigelseInterval(Base):
 class AdresseDawa(Base):
     __tablename__ = 'AdresseDawa'
 
-    adresseid = Column(Integer, primary_key=True)
-    id = Column(String(40, 'utf8mb4_bin'), nullable=False, unique=True)
+    # adresseid = Column(Integer, primary_key=True)
+    id = Column(String(40, 'utf8mb4_bin'), nullable=False, primary_key=True)
     status = Column(Integer)
     oprettet = Column(DateTime)
     ændret = Column(DateTime)
@@ -97,11 +98,11 @@ class Adresseupdate(Base):
     updateid = Column(BigInteger, primary_key=True)
     enhedsnummer = Column(BigInteger, nullable=False)
     adressematch = Column(String(128, 'utf8mb4_bin'), nullable=False)
-    kode = Column(BigInteger, nullable=False)
+    # kode = Column(BigInteger, nullable=False)
+    id = Column(String(40, 'utf8mb4_bin'), ForeignKey('AdresseDawa.id'))
     gyldigfra = Column(DateTime, nullable=False, server_default=default_start_date)
     gyldigtil = Column(DateTime, nullable=False, server_default=default_end_date)
-    post_string = Column(String(255, 'utf8mb4_bin'))
-    adresse_json = Column(JSON)
+    post_string = Column(String(512, 'utf8mb4_bin'))
     sidstopdateret = Column(DateTime, nullable=True)
 
 

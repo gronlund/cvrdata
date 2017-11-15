@@ -2,11 +2,12 @@
 import csv
 import os
 import requests
+from tqdm import tqdm
 from . import alchemy_tables
 from . import create_views
-from .sql_help import SessionCache
 from . import create_session, config
-from tqdm import tqdm
+from .sql_help import SessionInsertCache
+
 
 class MakeCvrDatabase(object):
     def __init__(self):
@@ -40,13 +41,13 @@ class MakeCvrDatabase(object):
         r = requests.get(url, stream=True)
         total_length = int(r.headers.get('content-length', 0))
         chunk_size = 1024
-        with open(filename, 'wb') as f:
-            # for chunk in progress.bar(r.iter_content(chunk_size=32*1024), expected_size=(total_length / (32*1024)) + 1):
-            #     if chunk:
-            #         f.write(chunk)
-            #         f.flush()
-            for data in tqdm(r.iter_content(chunk_size=chunk_size), total=int(total_length/chunk_size), unit='KB'):
-                f.write(data)
+        # with open(filename, 'wb') as f:
+        #     # for chunk in progress.bar(r.iter_content(chunk_size=32*1024), expected_size=(total_length / (32*1024)) + 1):
+        #     #     if chunk:
+        #     #         f.write(chunk)
+        #     #         f.flush()
+        #     for data in tqdm(r.iter_content(chunk_size=chunk_size), total=int(total_length/chunk_size), unit='KB'):
+        #         f.write(data)
         return filename
         # os.system('wget  https://dawa.aws.dk/adresser?format=csv -O {0}'.format(target))
 
@@ -64,13 +65,20 @@ class MakeCvrDatabase(object):
         session.commit()
         session.close()
         print('Dawa Table Emptied')
+        cols = table.__table__.c
+        extract = set(x.name for x in cols)
         with open(filename, newline='', encoding='UTF-8') as csvfile:
-            ad_reader = csv.reader(csvfile, delimiter=',')
-            # tmp = next(ad_reader)
-            db = SessionCache(table, table.__table__.c)
-            for i, row in enumerate(ad_reader):
-                row2 = [x if x != '' else None for x in row]
-                db.insert(tuple(row2))
-                if (i % 10000) == 0:
+            csv_reader = csv.DictReader(csvfile, delimiter=',')
+            #ad_reader = csv.reader(csvfile, delimiter=',')
+            # header =  next(ad_reader)
+            # print('what is header', header)
+
+            #print('cols: ', cols)
+            db = SessionInsertCache(table, cols)
+            for i, row in enumerate(csv_reader):
+                #row2 = [x if x != '' else None for x in row]
+                dat = tuple(v if v != '' else None for k, v in row.items() if k in extract)
+                db.insert(dat)
+                if (i % 1000) == 0:
                     print('Adresses inserted: {0}'.format(i))
             db.commit()

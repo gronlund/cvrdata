@@ -34,7 +34,7 @@ class CvrConnection(object):
         self.person_type = 'deltager'
         user = config['cvr_user']
         password = config['cvr_passwd']
-        self.datapath = config['datapath']
+        self.datapath = config['data_path']
         self.update_batch_size = 128
         self.source_keymap = {'virksomhed': 'Vrvirksomhed', 'deltager': 'Vrdeltagerperson',
                               'produktionsenhed': 'VrproduktionsEnhed'}

@@ -4,7 +4,6 @@ from . import (interactive_ensure_config_exists, setup_database_connection, inte
 from .elastic_cvr_extract import CvrConnection
 from . import cvr_makedb
 
-
 class Commands:
 
     @staticmethod
@@ -83,19 +82,19 @@ parser_query.add_argument('-p', '--pid', dest='pid', type=int, help="pnummer of 
 parser_reconfigure = subparsers.add_parser('reconfigure', help='Reconfigure configuration.')
 
 parser_setup = subparsers.add_parser('dbsetup', help='Setup data base tables, views, and indexes')
-parser_update.add_argument('-t', '--create_tables',
+parser_setup.add_argument('-t', '--create_tables',
                            dest='create_tables',
                            help='Build tables before update. Build query index and views after first update',
                            default=False,
-                           action='store_true'
+                           action='store_true',
                            )
-parser_update.add_argument('-v', '--create_views',
+parser_setup.add_argument('-v', '--create_views',
                            dest='create_views',
                            help='Build useful data views',
                            default=False,
                            action='store_true'
                            )
-parser_update.add_argument('-i', '--create_query_indexes',
+parser_setup.add_argument('-i', '--create_query_indexes',
                            dest='create_query_indexes',
                            help='Build useful query indexes - build after first update',
                            default=False,
