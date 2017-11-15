@@ -11,14 +11,18 @@ setup(
     packages=['cvrparser'],
     install_requires=[
         'SQLAlchemy>=1.1.14',
+        'chardet>=3.0.4',
         'elasticsearch1>=1.10.0',
         'elasticsearch1-dsl>=0.0.12',
+        'idna>=2.6',
         'mysqlclient>=1.3.12',
         'numpy>=1.13.3',
         'python-dateutil>=2.6.1',
         'python_Levenshtein>=0.12.0',
         'pytz>=2017.3',
+        'six>=1.11.0',
         'requests',
-        'ujson>=1.35'
+        'ujson>=1.35',
+        'urllib3>=1.22'
     ],
 )
