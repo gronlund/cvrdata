@@ -114,6 +114,7 @@ def setup_database_connection(config_name='Global'):
     global _engine, _session, config
 
     config = read_config()[config_name]
+    print('config')
     connection_url = ("{sql_type}://{user}:{passwd}@{host}:{port}/"
                       "{database}?charset={charset}")
     connection_url = connection_url.format(**config)
