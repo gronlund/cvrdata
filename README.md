@@ -16,5 +16,10 @@ If you use this script to fetch data for academic purposes please cite it as fol
 }
 ```
 
-# Setup and Installation
-To come
+# Setup
+The module can be installed using pip after installing the dependencies mentioned earlier.
+Run the following command:
+
+``pip install --process-dependency-links git+https://github.com/gronlund/cvrdata``
+
+This should install regnskaber as a module in your current python environment.
