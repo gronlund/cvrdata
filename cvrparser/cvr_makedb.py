@@ -39,13 +39,13 @@ class MakeCvrDatabase(object):
         url = 'https://dawa.aws.dk/adresser?format=csv'
         r = requests.get(url, stream=True)
         total_length = int(r.headers.get('content-length', 0))
-        chunk_size = 2**20
+        chunk_size = 1024
         with open(filename, 'wb') as f:
             # for chunk in progress.bar(r.iter_content(chunk_size=32*1024), expected_size=(total_length / (32*1024)) + 1):
             #     if chunk:
             #         f.write(chunk)
             #         f.flush()
-            for data in tqdm(r.iter_content(chunk_size=chunk_size), total=int(total_length/chunk_size), unit='MB'):
+            for data in tqdm(r.iter_content(chunk_size=chunk_size), total=int(total_length/chunk_size), unit='KB'):
                 f.write(data)
         return filename
         # os.system('wget  https://dawa.aws.dk/adresser?format=csv -O {0}'.format(target))
