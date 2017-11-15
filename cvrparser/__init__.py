@@ -50,7 +50,8 @@ class DefaultSessionProxy:
         return _session(*args, **kwargs)
 
 
-config_fields = ['host', 'port', 'user', 'passwd', 'database', 'sql_type', 'cvr_user', 'cvr_passwd', 'charset']
+config_fields = ['host', 'port', 'user', 'passwd', 'database', 'sql_type', 'cvr_user', 'cvr_passwd', 'charset',
+                 'data_path']
 
 
 def interactive_configure_connection():
@@ -61,9 +62,6 @@ def interactive_configure_connection():
     user = input('User: ')
     passwd = getpass.getpass()
     database = input('Database: ')
-    print('Please enter cvr elasticsearch connection information below.')
-    cvr_user = input('cvr elastic search user')
-    cvr_passwd = getpass.getpass()
     while True:
         sql_type = input('Sql type [1] mysql [2] postgresql: ')
         try:
@@ -74,7 +72,11 @@ def interactive_configure_connection():
         except (ValueError, AssertionError):
             print('Please enter a number, either 1 or 2')
             continue
-
+    print('Please enter cvr elasticsearch connection information below.')
+    cvr_user = input('CVR User: ')
+    cvr_passwd = getpass.getpass()
+    print('Please enter path where cvr data can be downloaded')
+    data_path = input('Data Path: ')
     config_values = {
         'Global': dict(
             host=host, port=port, user=user, passwd=passwd, database=database,
