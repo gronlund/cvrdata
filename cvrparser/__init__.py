@@ -61,6 +61,9 @@ def interactive_configure_connection():
     user = input('User: ')
     passwd = getpass.getpass()
     database = input('Database: ')
+    print('Please enter cvr elasticsearch connection information below.')
+    cvr_user = input('cvr elastic search user')
+    cvr_passwd = getpass.getpass()
     while True:
         sql_type = input('Sql type [1] mysql [2] postgresql: ')
         try:
@@ -75,7 +78,7 @@ def interactive_configure_connection():
     config_values = {
         'Global': dict(
             host=host, port=port, user=user, passwd=passwd, database=database,
-            sql_type=sql_type, charset='utf8mb4',
+            sql_type=sql_type, charset='utf8mb4',cvr_user=cvr_user, cvr_passwd=cvr_passwd
         )
     }
     _config = configparser.ConfigParser()
