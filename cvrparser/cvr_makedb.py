@@ -42,7 +42,7 @@ class MakeCvrDatabase(object):
         total_length = int(r.headers.get('content-length', 0))
         with open(filename, 'wb') as f:
 
-            for chunk in progress.bar(r.iter_content(chunk_size=1024), expected_size=(total_length / 1024) + 1):
+            for chunk in progress.bar(r.iter_content(chunk_size=32*1024), expected_size=(total_length / 1024) + 1):
                 if chunk:
                     f.write(chunk)
                     f.flush()
