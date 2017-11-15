@@ -11,7 +11,7 @@ config_path = Path(__file__).parent / 'config.ini'
 
 _engine = None
 _session = None
-
+config = None
 
 class DefaultEngineProxy:
     def __getattr__(self, item):
@@ -106,12 +106,12 @@ def read_config(config_name='Global'):
 
 
 def setup_database_connection(config_name='Global'):
-    global _engine, _session
+    global _engine, _session, config
 
-    db_config = read_config()
+    config = read_config()[config_name]
     connection_url = ("{sql_type}://{user}:{passwd}@{host}:{port}/"
                       "{database}?charset={charset}")
-    connection_url = connection_url.format(**db_config[config_name])
+    connection_url = connection_url.format(**config)
     _engine = create_engine(connection_url, encoding='utf8', echo=False)
     _session = sessionmaker(bind=engine)
 
