@@ -118,7 +118,7 @@ def setup_database_connection(config_name='Global'):
 
 engine = DefaultEngineProxy()
 Session = DefaultSessionProxy()
-config = read_config()['Global']
+
 
 
 def create_session():
