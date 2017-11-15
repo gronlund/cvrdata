@@ -105,5 +105,4 @@ parser_update.add_argument('-i', '--create_query_indexes',
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
-    print(args)
     getattr(Commands, args.pop('command'))(**args)

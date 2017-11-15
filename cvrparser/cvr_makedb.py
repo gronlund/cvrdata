@@ -6,6 +6,7 @@ from . import alchemy_tables
 from . import create_views
 from .sql_help import SessionCache
 from . import create_session, config
+from clint.textui import progress
 
 
 class MakeCvrDatabase(object):
@@ -39,8 +40,11 @@ class MakeCvrDatabase(object):
         url = 'https://dawa.aws.dk/adresser?format=csv'
         r = requests.get(url, stream=True)
         with open(filename, 'wb') as f:
-            for chunk in r.iter_content():
-                f.write(chunk)
+            total_length = int(r.headers.get('content-length'))
+            for chunk in progress.bar(r.iter_content(chunk_size=1024), expected_size=(total_length / 1024) + 1):
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
         return filename
         # os.system('wget  https://dawa.aws.dk/adresser?format=csv -O {0}'.format(target))
 
