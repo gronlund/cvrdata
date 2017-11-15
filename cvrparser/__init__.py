@@ -1,8 +1,6 @@
 import configparser
 import getpass
-
 from pathlib import Path
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -11,7 +9,6 @@ config_path = Path(__file__).parent / 'config.ini'
 
 _engine = None
 _session = None
-config = None
 
 class DefaultEngineProxy:
     def __getattr__(self, item):
@@ -113,18 +110,21 @@ def read_config(config_name='Global'):
 def setup_database_connection(config_name='Global'):
     global _engine, _session, config
 
-    config = read_config()[config_name]
-    print('config', config, type(config), config.keys(), config.values())
+    _config = read_config()[config_name]
+    for k, v in _config.items():
+        config[k] = v
+
+
     connection_url = ("{sql_type}://{user}:{passwd}@{host}:{port}/"
                       "{database}?charset={charset}")
-    connection_url = connection_url.format(**config)
+    connection_url = connection_url.format(**_config)
     _engine = create_engine(connection_url, encoding='utf8', echo=False)
     _session = sessionmaker(bind=engine)
 
 
 engine = DefaultEngineProxy()
 Session = DefaultSessionProxy()
-
+config = dict()
 
 
 def create_session():

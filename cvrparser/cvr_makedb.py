@@ -5,7 +5,7 @@ import requests
 from . import alchemy_tables
 from . import create_views
 from .sql_help import SessionCache
-from . import config, create_session
+from . import create_session, config
 
 
 class MakeCvrDatabase(object):
@@ -34,6 +34,7 @@ class MakeCvrDatabase(object):
     def download_dawa():
         """ Download newst dawa file """
         print('Download newest dawa data')
+
         filename = os.path.join(config['data_path'], 'dawa.csv')
         url = 'https://dawa.aws.dk/adresser?format=csv'
         r = requests.get(url, stream=True)
