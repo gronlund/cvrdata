@@ -4,25 +4,23 @@ import os
 import ujson as json
 import logging
 import argparse
+import tqdm
 
+def download_all_dicts_to_file(filename, search, mode='w'):
+    """ Download data from elastic search server
 
-def download_all_dicts_to_file(filename, search):
-    """
+    :param filename: str, name of file to save data
+    :param search: elasticsearch search object to query
     :return:
-    str: filename, datetime: download time
     """
     print('Download Data Write to File')
     print('ElasticSearch Download Scan Query: ', search.to_dict())
     generator = search.scan()
-    filename_tmp = '{0}_tmp.json'.format(filename)
-    with open(filename_tmp, 'w') as f:
-        for i, obj in enumerate(generator):
+    #filename_tmp = '{0}_tmp.json'.format(filename)
+    with open(filename, mode) as f:
+        for obj in tqdm.tqdm(generator):
             json.dump(obj.to_dict(), f)
             f.write('\n')
-            if (i % 10000) == 0:
-                print('{0} files downloaded'.format(i))
-    print('File downloaded - renaming')
-    os.rename(filename_tmp, filename)
     print('Updates Downloaded - File {0} written'.format(filename))
     return filename
 

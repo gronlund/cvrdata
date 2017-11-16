@@ -5,6 +5,7 @@ import datetime
 import ujson as json
 import os
 import pytz
+import tqdm
 from .field_parser import utc_transform
 from . import Session, config
 from . import alchemy_tables
@@ -106,7 +107,7 @@ class CvrConnection(object):
         perform updates
         """
         session = get_session()
-        ud_table = alchemy_tables.Virksomhed
+        ud_table = alchemy_tables.Update
         res = session.query(ud_table).first()
         session.close()
         old_file_used = False
@@ -120,14 +121,13 @@ class CvrConnection(object):
         else:
             updatetime, units_to_update = self.get_update_info()
             if updatetime < (datetime.datetime.utcnow().replace(tzinfo=pytz.utc) - datetime.timedelta(days=7)):
-                update_time, units_to_update = self.optimize_download_updated(updatetime, units_to_update)
-            if len(units_to_update) < self.max_download_size:
-                pass
-            else:
-                updatetime = updatetime - datetime.timedelta(hours=2)  # just to be sure
-                filename = self.download_all_dicts_from_timestamp(updatetime)
+                update_time = self.optimize_download_updated(units_to_update)
+                if update_time is None:
+                    return
+            updatetime = updatetime - datetime.timedelta(hours=2)  # just to be sure
+            filename = self.download_all_dicts_from_timestamp(updatetime)
                 # filename = os.path.join(self.datapath, 'cvr_update.json')
-            print('Start Updating Database')
+        print('Start Updating Database')
         self.update_from_mixed_file(filename)
         if old_file_used and not resume_cvr_all:
             print('Inserted the old files - now update to newest version, i will call myself')
@@ -138,12 +138,10 @@ class CvrConnection(object):
         :return:
         str: filename, datetime: download time, bool: new download or use old file
         """
-        print('Download to file name: {0}'.format(filename))
         params = {'scroll': self.elastic_search_scroll_time, 'size': self.elastic_search_scan_size}
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('match_all')
         search = search.params(**params)
-        print('ElasticSearch Download Scan Query: ', search.to_dict())
         download_all_dicts_to_file(filename, search)
 
     def download_all_dicts_from_timestamp(self, last_updated):
@@ -154,30 +152,18 @@ class CvrConnection(object):
         """
         print('Download Data Write to File')
         filename = os.path.join(self.datapath, 'cvr_update.json'.format(last_updated))
-        filename_tmp = '{0}_tmp'.format(filename)
         if os.path.exists(filename):
             "filename exists {0} overwriting".format(filename)
-            # return filename
         print('Download updates to file name: {0}'.format(filename))
         params = {'scroll': self.elastic_search_scroll_time, 'size': self.elastic_search_scan_size}
         # Change to download all files
-        with open(filename_tmp, 'w') as f:
-            for _type in self.source_keymap.values():
-                print('Downloading Type {0}'.format(_type))
-                search = Search(using=self.elastic_client, index=self.index)
-                search = search.query('range', **{'{0}.sidstOpdateret'.format(_type): {'gte': last_updated}})
-                search = search.params(**params)
-                print('ElasticSearch Download Scan Query: ', search.to_dict())
-                generator = search.scan()
-                for i, obj in enumerate(generator):
-                    json.dump(obj.to_dict(), f)
-                    f.write('\n')
-                    if (i % 1000) == 0:
-                        print('{0} files downloaded'.format(i))
-                print('{0} handled:'.format(_type))
-        print('Files downloaded - renaming')
-        os.rename(filename_tmp, filename)
-        print('Updates Downloaded - File {0} written'.format(filename))
+        for _type in self.source_keymap.values():
+            print('Downloading Type {0}'.format(_type))
+            search = Search(using=self.elastic_client, index=self.index)
+            search = search.query('range', **{'{0}.sidstOpdateret'.format(_type): {'gte': last_updated}})
+            search = search.params(**params)
+            download_all_dicts_to_file(filename, search, mode='a')
+            print('{0} handled:'.format(_type))
         return filename
 
     def update_units(self, enh):
@@ -208,9 +194,8 @@ class CvrConnection(object):
             _type: string, type object to update
         """
         enh = [x['enhedsNummer'] for x in dicts]
-        print('Deleting {0}'.format(_type))
+        print('Start Update: {0} units '.format(len(dicts)))
         self.delete(enh, _type)
-        print('Deleted now Insert')
         try:
             self.insert(dicts, _type)
         except Exception as e:
@@ -269,13 +254,13 @@ class CvrConnection(object):
         data_parser = data_scanner.DataParser(_type=enh_type)
         address_parser = self.address_parser_factory.create_parser(self.update_address)
         data_parser.parse_data(dicts)
-        print('value data inserted - start dynamic ')
+        # print('value data inserted - start dynamic ')
         data_parser.parse_dynamic_data(dicts)
-        print('dynamic data inserted')
+        # print('dynamic data inserted')
         address_parser.parse_address_data(dicts)
-        print('address data inserted/skipped - start static')
+        # print('address data inserted/skipped - start static')
         data_parser.parse_static_data(dicts)
-        print('static parsed')
+        # print('static parsed')
 
     def make_samtid_table(self):
         """ Make mapping from entity id to current version """
@@ -340,7 +325,7 @@ class CvrConnection(object):
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('match_all')
         field_list = ['_id'] + ['{0}.sidstOpdateret'.format(key) for key in self.source_keymap.values()] + \
-                     ['{0}.samtId'.format(key) for key in self.source_keymap.values()] + ['_type']
+                     ['{0}.samtId'.format(key) for key in self.source_keymap.values()]
 
         print('field list to get', field_list)
         search = search.fields(fields=field_list)
@@ -348,15 +333,12 @@ class CvrConnection(object):
         search = search.params(**params)
         print('ElasticSearch Query: ', search.to_dict())
         generator = search.scan()
-        oldest_sidstopdaret = datetime.datetime.utcnow().astimezone(datetime.timezone.utc)
+        oldest_sidstopdateret = datetime.datetime.utcnow().astimezone(datetime.timezone.utc)
         oldest_enh = None
         oldest_dat = None
         units_to_update = []
-        for i, cvr_update in enumerate(generator):
-            if (i % 100000) == 0:
-                print('{0} units considered'.format(i))
+        for cvr_update in generator:
             enhedsnummer = int(cvr_update.meta.id)
-            _type = cvr_update.meta._type
             raw_dat = cvr_update.to_dict()
             samtid = None
             sidstopdateret = None
@@ -372,8 +354,8 @@ class CvrConnection(object):
             current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
             if samtid > current_update.samtid:
                 utc_sidstopdateret = utc_transform(sidstopdateret)
-                units_to_update.append((enhedsnummer, utc_sidstopdateret, _type))
-        print('oldest sidstopdaret found', oldest_sidstopdaret, oldest_enh, oldest_dat)
+                units_to_update.append((enhedsnummer, utc_sidstopdateret))
+        print('oldest sidstopdaret found', oldest_sidstopdateret, oldest_enh, oldest_dat)
         return min(x[1] for x in units_to_update), units_to_update
 
     def optimize_download_updated(self, units):
