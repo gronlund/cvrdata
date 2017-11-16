@@ -276,13 +276,12 @@ class CvrConnection(object):
         :param enh_type: cvr object type
         """
         data_parser = data_scanner.DataParser(_type=enh_type)
+        address_parser = self.address_parser_factory.create_parser(self.update_address)
         data_parser.parse_data(dicts)
         print('value data inserted - start dynamic ')
         data_parser.parse_dynamic_data(dicts)
         print('dynamic data inserted')
-        if self.update_address:
-            address_parser = self.address_parser_factory.create_parser()
-            address_parser.parse_address_data(dicts)
+        address_parser.parse_address_data(dicts)
         print('address data inserted/skipped - start static')
         data_parser.parse_static_data(dicts)
         print('static parsed')

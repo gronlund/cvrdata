@@ -286,12 +286,20 @@ class AddressParser(Parser):
         for field in self.json_fields:
             for bi, z in enumerate(data[field]):
                 tfrom, tto, utc_sidstopdateret = get_date(z)
-                [aid, ad_status] = self.best_dawa_match.adresse_id(z)
-                if aid is None:
-                    if ad_status == 'nedlagt_adresse':
-                        print('nedlagt adresse')
-                    elif ad_status[0:6] == 'udland':
-                        print('udlandsk adresse - ignore ', ad_status)
+                if 'adresseId' in z and z['adresseId'] is not None:
+                    aid = z['adresseId']
+                    ad_status = 'adresse'
+                elif self.best_dawa_match is not None:
+                    [aid, ad_status] = self.best_dawa_match.adresse_id(z)
+                else:
+                    aid = None
+                    ad_status = 'No Id'
+
+                # if aid is None:
+                #     if ad_status == 'nedlagt_adresse':
+                #         print('nedlagt adresse')
+                #     elif ad_status[0:6] == 'udland':
+                #         print('udlandsk adresse - ignore ', ad_status)
 
                 bl = beliggenhedsadresse_to_str(z)
                 self.db.insert((enh, field, ad_status, aid, tfrom, tto, bl, utc_sidstopdateret))

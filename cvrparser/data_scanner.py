@@ -209,8 +209,11 @@ class AddressParserFactory(object):
         self.address_tables = None
         self.dawa_translater = None
 
-    def create_parser(self):
-        return AddressParser(alchemy_tables.Adresseupdate, self.get_dawa_translater())
+    def create_parser(self, use_matcher=False):
+        if use_matcher:
+            return AddressParser(alchemy_tables.Adresseupdate, self.get_dawa_translater())
+        else:
+            return AddressParser(alchemy_tables.Adresseupdate, None)
 
     def get_address_tables(self):
         if self.address_tables is None:
