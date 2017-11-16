@@ -194,7 +194,7 @@ class CvrConnection(object):
             _type: string, type object to update
         """
         enh = [x['enhedsNummer'] for x in dicts]
-        print('Start Update: {0} units '.format(len(dicts)))
+        # print('Start Update: {0} units '.format(len(dicts)))
         self.delete(enh, _type)
         try:
             self.insert(dicts, _type)
@@ -202,7 +202,7 @@ class CvrConnection(object):
             print(e)
             print('enh failed', enh)
             raise e
-        print('Update Done!')
+        # print('Update Done!')
 
     def delete(self, enh, _type):
         """ Delete data from given entities
@@ -287,9 +287,7 @@ class CvrConnection(object):
         dummy = self.update_info(samtid=-1, sidstopdateret=self.dummy_date)
         dicts = {x: list() for x in self.source_keymap.values()}
         with open(filename) as f:
-            for i, line in enumerate(f):
-                if (i % 50000) == 0:
-                    print('{0} updates cleared '.format(i))
+            for line in tqdm.tqdm(f):
                 raw_dat = json.loads(line)
                 keys = raw_dat.keys()
                 dict_type_set = keys & self.source_keymap.values()  # intersects the two key sets
