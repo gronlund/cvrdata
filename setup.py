@@ -22,6 +22,7 @@ setup(
         'pytz>=2017.3',
         'six>=1.11.0',
         'requests',
+        'tqdm>=4.19.4',
         'ujson>=1.35',
         'urllib3>=1.22'
     ],

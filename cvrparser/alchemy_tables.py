@@ -1,5 +1,5 @@
 # coding: utf-8
-from sqlalchemy import BigInteger, Column, DateTime, Enum, Float, Index, Integer, JSON, SmallInteger, String, text, \
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Float, Index, Integer, SmallInteger, String, text, \
     Text, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from . import engine
@@ -99,7 +99,7 @@ class Adresseupdate(Base):
     enhedsnummer = Column(BigInteger, nullable=False)
     adressematch = Column(String(128, 'utf8mb4_bin'), nullable=False)
     # kode = Column(BigInteger, nullable=False)
-    id = Column(String(40, 'utf8mb4_bin'), ForeignKey('AdresseDawa.id'))
+    dawaid = Column(String(40, 'utf8mb4_bin'), nullable=True)
     gyldigfra = Column(DateTime, nullable=False, server_default=default_start_date)
     gyldigtil = Column(DateTime, nullable=False, server_default=default_end_date)
     post_string = Column(String(512, 'utf8mb4_bin'))

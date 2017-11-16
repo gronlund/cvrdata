@@ -34,6 +34,7 @@ pytz == 2017.3
 # cvrparser/cvr_makedb.py: 4
 requests == 2.18.4
 
+tqdm == 4.19.4
 # cvrparser/cvr_download.py: 4
 # cvrparser/elastic_cvr_extract.py: 5
 ujson == 1.35

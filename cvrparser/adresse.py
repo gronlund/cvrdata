@@ -5,22 +5,29 @@ import itertools as it
 import os
 import requests
 import Levenshtein as Le
-from . import engine
+from .alchemy_tables import AdresseDawa
+from . import create_session
 
 
 def make_adresse_dict():
-    """make tree (dict) of dawa adresses of kommunekode, vejkode, husnr, etage, doer, adresseid"""
-    sql_query = """select kommunekode,vejkode,husnr,etage,dør,adresseid from AdresseDawa 
-                   order by kommunekode, vejkode, husnr, etage, dør"""
-    res = [(k, v, str_clean(h), str_clean(e), str_clean(d), a) for (k, v, h, e, d, a) in engine.execute(sql_query)]
+    """make tree (dict) of dawa adresses of kommunekode, vejkode, husnr, etage, doer, dawaid"""
+    session = create_session()
+    query = session.query(AdresseDawa.kommunekode, AdresseDawa.vejkode, AdresseDawa.husnr,
+                          AdresseDawa.dør, AdresseDawa.id)
+    # sql_query = """select kommunekode,vejkode,husnr,etage,dør,id from AdresseDawa
+    #                order by kommunekode, vejkode, husnr, etage, dør"""
+    res = [(k, v, str_clean(h), str_clean(e), str_clean(d), a) for (k, v, h, e, d, a) in query.all()]
     kmap = gb(res)
     return kmap
 
 
 def make_post_grupper():
-    """ make postnr og navn som kan forveksles ind i grupper """
+    """ make postnr og navn som kan forveksles ind i grupper
     sql_query = 'select distinct postnr,postnrnavn from AdresseDawa'
-    dat = [(str_clean(y.split()[0]), x) for (x, y) in engine.execute(sql_query)]
+    """
+    session = create_session()
+    query = session.query(AdresseDawa.postnr, AdresseDawa.postnrnavn).distinct()
+    dat = [(str_clean(y.split()[0]), x) for (x, y) in query.all()]
     rele = ['København', 'Frederiksberg', 'Odense', 'Randers', 'Esbjerg', 'Aalborg', 'Aarhus',
             'Faxe', 'Vallensbæk', 'Vejle']
     rele = [str_clean(x) for x in rele]
@@ -31,33 +38,33 @@ def make_post_grupper():
     return kg
 
 
-def make_id_map():
-    """ Lav en mapping fra dawa string id til adresseid """
-    sql_query = "select id,adresseid from AdresseDawa"
-    id_map = {x: y for (x, y) in engine.execute(sql_query)}
-    return id_map
-
-
 def make_postnr_vejnavn_map():
-    """ lav maps til postnummer,vejnavn"""
+    """ lav maps til postnummer,vejnavn
     sql_query = 'select distinct postnr,postnrnavn,vejnavn,kommunekode,vejkode from AdresseDawa'
-    dat = [(x, str_clean(y), str_clean(z), (a, b)) for (x, y, z, a, b) in engine.execute(sql_query)]
-    pv_map = gb(dat)
-    return pv_map
+    """
+    with create_session() as session:
+        query = session.query(AdresseDawa.postnr, AdresseDawa.postnrnavn, AdresseDawa.vejnavn, AdresseDawa.kommunekode,
+                              AdresseDawa.vejkode).distinct()
+        dat = [(x, str_clean(y), str_clean(z), (a, b)) for (x, y, z, a, b) in query.all()]
+        pv_map = gb(dat)
+        return pv_map
 
 
 def make_kmap():
-    # generate map from database
+    """
     sql_query = 'SELECT distinct kommunenavn,kommunekode from AdresseDawa'
-    res = engine.execute(sql_query)
-    kmap = {str_clean(x): y for (x, y) in res}
-    return kmap
+    :return: dict - map from kommunenavn til kode
+    """
+    # generate map from database
+    with create_session() as session:
+        query = session.query(AdresseDawa.kommunenavn, AdresseDawa.kommunekode).distinct()
+        kmap = {str_clean(x): y for (x, y) in query.all()}
+        return kmap
 
 
 def get_adresse_maps():
     return {
         'adr_tree': make_adresse_dict(),
-        'id_map': make_id_map(),
         'postnr_map': make_postnr_vejnavn_map(),
         'post_grupper': make_post_grupper(),
         'kmap': make_kmap()
@@ -197,16 +204,15 @@ class AdressTranslater(object):
     Caches all the database tables fetched for the mathing and the session used.
     
     """
-    def __init__(self, dawa_map, adr_tree, id_map, postnr_map, post_grupper, kmap):
+    def __init__(self, dawa_map, adr_tree, postnr_map, post_grupper, kmap):
         """ load data dicts from database """
         self.cache_path = os.path.join(os.path.dirname(__file__), 'workcache')
         self.adr_tree = adr_tree
-        self.id_map = id_map
         self.postnr_map = postnr_map
         self.post_grupper = post_grupper
         self.kmap = kmap
         self.my_session = requests.Session()
-        self.fail = (-1, 'fejlet')
+        self.fail = (None, 'fail')
         self.dawa_map = dawa_map
         self.gl_names = None
         
@@ -346,13 +352,11 @@ class AdressTranslater(object):
             assert len(tmp[0]) == 2, "BAD TUPLE"
             return tmp[0]
         else:
-            # print('mange muligheder, brug husnummer')
             husnr = get_husnr(bla['husnummerFra'], bla['bogstavFra'])
             for z in tmp:
                 tr_left = self.adr_tree[z[0]][z[1]]                
                 if husnr in tr_left.keys():
                     return z
-            # print('NONE FOUND NONE')
             # husnr_bogstav = get_husnr(bla['husnummerFra'], bla['bogstavFra'])
             husnr_tal = bla['husnummerFra']
             if husnr_tal is None:
@@ -369,8 +373,6 @@ class AdressTranslater(object):
             idx = min(enumerate(ordered_list), key=lambda x: x[1])[0]
             # best_obj = lst[idx]
             kv = idl[idx]
-            assert False, 'do i ever use this'
-            # print('found somehitng', kv)
             return kv
 
     def brug_post_og_vejnavn(self, bla):
@@ -498,14 +500,10 @@ class AdressTranslater(object):
             # adresseringsvejnavn = best_obj['aktueladresse']['adresseringsvejnavn']
             # vejnavn = best_obj['aktueladresse']['vejnavn']
             # what to do with this...
-            return -1, 'nedlagt_adresse'
-        
+            return None, 'nedlagt_adresse'
         idx = best_obj['aktueladresse']['id']
-        if idx not in self.id_map.keys():
-            print('DAWA fejl', idx)
-            return self.fail
-        return self.id_map[idx], 'adresse'
-        
+        return idx, 'addresse'
+
     def adresse_id(self, bla):
         """
         Find the dawa adresse id that corresponds to the beliggenhedsadresse given.
@@ -517,21 +515,12 @@ class AdressTranslater(object):
         Options: Husnr, sideDoer, Etage
         """
         if 'adresseId' in bla and bla['adresseId'] is not None:
-            # print('Has DAWA ID RETURN IT if i have it')
-            if not bla['adresseId'] in self.id_map:
-                print("DAWA ID NOT FOUND - UPDATE DAWA")
-                print('adresse id not found: ', bla)
-                poststr = beliggenhedsadresse_to_str(bla)
-                print('post string: ', poststr)
-            else:
-                return self.id_map[bla['adresseId']], 'adresse'
+            return bla['adresseId'], 'adresse'
         bla = clean_adresse(bla)
         if bla['landekode'] != 'dk':
-            # print('anden landekode')
-            return -1, 'udland_{0}'.format(bla['landekode'])
+            return None, 'udland_{0}'.format(bla['landekode'])
         if self.is_greenland(bla['postdistrikt']):
-            # print('groenland postdistrikt, not in dawa!!!')
-            return -1, 'udland_gl'
+            return None, 'udland_gl'
         fake_vejnavne = {'folkeregistret', 'ukendt adresse', 'uden fast bopæl', 'nordisk flytning afventes',
                          'retur til afsender', 'folkeregisteret', 'adressen ukendt', 'folkeregisteret',
                          'udsendte af den danske stat', 'ukendt adresse,retur afsender', 'retur afsender',
@@ -539,7 +528,7 @@ class AdressTranslater(object):
         # morsø folkeregister , uk.adr.ret.t.afs
         if bla['vejnavn'] in fake_vejnavne or bla['postnummer'] == 9999:
             # print('ukendt adresse i vejnavn or postnummer 9999')
-            return -1, 'ingen adresse {0}'
+            return None, 'fake adresse'
                   
         kommune = bla['kommune']  # maybe find last here
         vejkode = None
@@ -554,7 +543,6 @@ class AdressTranslater(object):
                 kommunekode, vejkode = self.brug_post_og_vejnavn(bla)
                 if kommunekode is None:
                     return self.dawa_lookup(bla)
-                # print('does this happen and why do we fail if we found kommunekode')
         else:
             # print('ingen god kommuneinfo - proev postnummer vejnavn kombi')
             kommunekode, vejkode = self.brug_post_og_vejnavn(bla)

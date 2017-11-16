@@ -272,47 +272,29 @@ class AttributParser(Parser):
 class AddressParser(Parser):
     """ Simple wrapper class for parsing adresses """
 
-    def __init__(self, dawa_transl, google_transl=None):
+    def __init__(self, dawa_transl):
         table = alchemy_tables.Adresseupdate
-        fields = [table.enhedsnummer, table.adressetype, table.adressematch, table.kode, table.gyldigfra,
-                  table.gyldigtil, table.post_string, table.adresse_json, table.sidstopdateret]
+        fields = [table.enhedsnummer, table.adressetype, table.adressematch, table.dawaid, table.gyldigfra,
+                  table.gyldigtil, table.post_string,  table.sidstopdateret]
         super().__init__(table, fields)
         # add beligstring to this maybe to see in db
         self.json_fields = ['beliggenhedsadresse', 'postadresse']
-        self.at = dawa_transl
-        self.gl = google_transl
-        self.use_google = self.gl is not None
+        self.best_dawa_match = dawa_transl
 
     def insert(self, data):
         enh = data['enhedsNummer']
         for field in self.json_fields:
             for bi, z in enumerate(data[field]):
                 tfrom, tto, utc_sidstopdateret = get_date(z)
-                [aid, ad_status] = self.at.adresse_id(z)
-                # print('what is aid', aid)
-                if aid == -1:
+                [aid, ad_status] = self.best_dawa_match.adresse_id(z)
+                if aid is None:
                     if ad_status == 'nedlagt_adresse':
                         print('nedlagt adresse')
-                        # self.bad_cache.append((enh, bi, hsh))
                     elif ad_status[0:6] == 'udland':
                         print('udlandsk adresse - ignore ', ad_status)
-                    elif ad_status == self.at.fail[1] and self.use_google:
-                        print('dawa failed - try google', enh, aid, ad_status, z)
-                        try:
-                            aid = self.gl.google_find(z)
-                            if aid == -1:
-                                # self.bad_cache.append((enh, bi, hsh))
-                                print('No Match')
-                            else:
-                                ad_status = 'adresse_google_nearest'
-                        except Exception as e:
-                            print('Google Fail', e)
-                            self.use_google = False
-                            # self.bad_cache.append((enh, bi, hsh))
+
                 bl = beliggenhedsadresse_to_str(z)
-                if aid == -1:  # Make it null as we made no match
-                    aid = None
-                self.db.insert((enh, field, ad_status, aid, tfrom, tto, bl, json.dumps(z), utc_sidstopdateret))
+                self.db.insert((enh, field, ad_status, aid, tfrom, tto, bl, utc_sidstopdateret))
 
 
 class ParserFactory(object):
