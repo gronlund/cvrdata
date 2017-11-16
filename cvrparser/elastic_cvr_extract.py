@@ -187,21 +187,12 @@ class CvrConnection(object):
         -----
           enh: list , id of units to update (enhedsnummer)
         """
-        data = self.get_entity(enh)
-        # types = {x['_type'] for x in data}
-        # assert len(types) == 1
-        # data_type = data[0]['_type']
-        # key = self.source_keymap[data_type]
-        # dat = [x['_source'][key] for x in data]
-        # self.update(dat, key)
-        # types = [x['_type'] for x in data]
-        # keys = [self.source_keymap[key] for key in types]
-        # dat = [x['_source'][key] for x, key  in zip(data, keys)]
+        data_list = self.get_entity(enh)
         dicts = {x: list() for x in self.source_keymap.values()}
-        for dict in data:
-            dict_type = dict['_type']
+        for data_dict in data_list:
+            dict_type = data_dict['_type']
             key = self.source_keymap[dict_type]
-            dicts[key].append(data['_source'][key])
+            dicts[key].append(data_dict['_source'][key])
             if len(dicts[key]) >= self.update_batch_size:
                 self.update(dicts[key], dict_type)
                 dicts[key].clear()

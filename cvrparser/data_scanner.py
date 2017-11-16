@@ -210,10 +210,10 @@ class AddressParserFactory(object):
         self.dawa_translater = None
 
     def create_parser(self, use_matcher=False):
+        trans = None
         if use_matcher:
-            return AddressParser(alchemy_tables.Adresseupdate, self.get_dawa_translater())
-        else:
-            return AddressParser(alchemy_tables.Adresseupdate, None)
+            trans = self.get_dawa_translater()
+        return AddressParser(trans)
 
     def get_address_tables(self):
         if self.address_tables is None:
@@ -228,8 +228,8 @@ class AddressParserFactory(object):
 
 
 class AddressParser(object):
-    def __init__(self,  tables_class, dawa_translater):
-        self.adresse_parser = field_parser.AddressParser(tables_class, dawa_translater)
+    def __init__(self,  dawa_translater=None):
+        self.adresse_parser = field_parser.AddressParser(dawa_translater)
 
     def parse_address_data(self, dicts):
         insert_values(dicts, self.adresse_parser)

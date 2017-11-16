@@ -97,6 +97,7 @@ class Adresseupdate(Base):
 
     updateid = Column(BigInteger, primary_key=True)
     enhedsnummer = Column(BigInteger, nullable=False)
+    adressetype = Column(Enum('beliggenhedsadresse', 'postadresse'))
     adressematch = Column(String(128, 'utf8mb4_bin'), nullable=False)
     # kode = Column(BigInteger, nullable=False)
     dawaid = Column(String(40, 'utf8mb4_bin'), nullable=True)
@@ -396,7 +397,7 @@ class CreateDatabase(object):
         :return:
         """
         print('Create Query Indexes')
-        adresse_unique = Index('adresse_time_index', Adresseupdate.enhedsnummer, Adresseupdate.kode,
+        adresse_unique = Index('adresse_time_index', Adresseupdate.enhedsnummer, Adresseupdate.dawaid,
                                Adresseupdate.gyldigfra, Adresseupdate.gyldigtil, unique=True)
         attr_enheds_index = Index('attributter_enhedsummer_index', Attributter.enhedsnummer, Attributter.vaerdinavn,
                                   Attributter.sekvensnr, Attributter.gyldigfra, Attributter.gyldigtil)

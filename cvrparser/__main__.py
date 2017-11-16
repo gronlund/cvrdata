@@ -23,6 +23,7 @@ class Commands:
         interactive_ensure_config_exists()
         setup_database_connection()
         cvr = CvrConnection(update_address=use_address)
+        print('resume', resume)
         cvr.update_all(resume)
 
     @staticmethod
