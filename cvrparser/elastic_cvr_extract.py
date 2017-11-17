@@ -122,7 +122,7 @@ class CvrConnection(object):
         else:
             update_info = self.get_update_list()
             # update_info = self.optimize_download_updated(update_info)
-            filename = self.download_all_dicts_from_timestamps(update_info)
+            filename = self.download_all_dicts_from_timestamp(update_info)
         print('Start Updating Database')
         self.update_from_mixed_file(filename)
         if old_file_used and not resume_cvr_all:
@@ -358,7 +358,7 @@ class CvrConnection(object):
         # print('oldest sidstopdaret found', oldest_sidstopdateret, oldest_enh, oldest_dat)
         # print('Units to update: {0}'.format(len(units_to_update)))
         print('Update Info:')
-        print([ (k, v['sidstopdateret']) for k, v in update_dicts.items()])
+        print([(k, v['sidstopdateret']) for k, v in update_dicts.items()])
         return update_dicts
 
     def optimize_download_updated(self, update_info):
@@ -367,19 +367,24 @@ class CvrConnection(object):
         Update the self.max_download_size oldest to see if that helps us use a reasonable sidstopdateret data
         maybe it is actually the punits that gives the biggest issue here.
 
-        :param units:
+        :param update_info:
         :return:
         """
         for _type, info in update_info.items():
-            units = info.units
+            units = info['units']
             if len(units) < self.max_download_size:
                 enh = [x[0] for x in units]
                 self.update_units(enh)
+                info['units'] = []
+                info['sidstopdateret'] = None
+            else:
                 sorted(units, key=lambda x: x[1])
-        first_enh = [x[0] for x in units[0:self.max_download_size]]
-        new_sidst_opdateret = units[self.max_download_size][1]
-        self.update_units(first_enh)
-        return new_sidst_opdateret
+                first_enh = [x[0] for x in units[0:self.max_download_size]]
+                new_sidst_opdateret = units[self.max_download_size][1]
+                self.update_units(first_enh)
+                info['units'] = units[self.max_download_size:]
+                info['sidstopdateret'] = new_sidst_opdateret
+        return update_info
 
     def find_missing(self):
         """
