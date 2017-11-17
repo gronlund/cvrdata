@@ -357,6 +357,8 @@ class CvrConnection(object):
 
         # print('oldest sidstopdaret found', oldest_sidstopdateret, oldest_enh, oldest_dat)
         # print('Units to update: {0}'.format(len(units_to_update)))
+        print('Update Info:')
+        print([ (k, v['sidstopdateret']) for k, v in update_dicts.items()])
         return update_dicts
 
     def optimize_download_updated(self, update_info):

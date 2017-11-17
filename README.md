@@ -22,7 +22,4 @@ Run the following command:
 
 ``pip install git+https://github.com/gronlund/cvrdata``
 
-or use
-
-``pip install -r requirements.txt``
 

@@ -4,6 +4,7 @@ from . import (interactive_ensure_config_exists, setup_database_connection, inte
 from .elastic_cvr_extract import CvrConnection
 from . import cvr_makedb
 
+
 class Commands:
 
     @staticmethod
@@ -23,7 +24,6 @@ class Commands:
         interactive_ensure_config_exists()
         setup_database_connection()
         cvr = CvrConnection(update_address=use_address)
-        print('resume', resume)
         cvr.update_all(resume)
 
     @staticmethod
@@ -84,23 +84,23 @@ parser_reconfigure = subparsers.add_parser('reconfigure', help='Reconfigure conf
 
 parser_setup = subparsers.add_parser('dbsetup', help='Setup data base tables, views, and indexes')
 parser_setup.add_argument('-t', '--create_tables',
-                           dest='create_tables',
-                           help='Build tables before update. Build query index and views after first update',
-                           default=False,
-                           action='store_true',
-                           )
+                          dest='create_tables',
+                          help='Build tables before update. Build query index and views after first update',
+                          default=False,
+                          action='store_true',
+                          )
 parser_setup.add_argument('-v', '--create_views',
-                           dest='create_views',
-                           help='Build useful data views',
-                           default=False,
-                           action='store_true'
-                           )
+                          dest='create_views',
+                          help='Build useful data views',
+                          default=False,
+                          action='store_true'
+                          )
 parser_setup.add_argument('-i', '--create_query_indexes',
-                           dest='create_query_indexes',
-                           help='Build useful query indexes - build after first update',
-                           default=False,
-                           action='store_true'
-                           )
+                          dest='create_query_indexes',
+                          help='Build useful query indexes - build after first update',
+                          default=False,
+                          action='store_true'
+                          )
 
 
 if __name__ == "__main__":
