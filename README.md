@@ -20,7 +20,7 @@ If you use this script to fetch data for academic purposes please cite it as fol
 The module can be installed using pip after installing the dependencies mentioned earlier.
 Run the following command:
 
-``pip install --process-dependency-links git+https://github.com/gronlund/cvrdata``
+``pip install git+https://github.com/gronlund/cvrdata``
 
 or use
 

@@ -47,6 +47,7 @@ class CvrConnection(object):
         self.elastic_search_scroll_time = u'10m'
         self.max_download_size = 1000  # max number of updates to download without scan scroll
         self.update_info = namedtuple('update_info', ['samtid', 'sidstopdateret'])
+        self.update_list = namedtuple('update_list', ['enhedsnummer', 'sidstopdateret'])
         self.dummy_date = datetime.datetime(year=1001, month=1, day=1, tzinfo=pytz.utc)
 
     def search_fielgd_val(self, field, value, size=10):
@@ -119,14 +120,9 @@ class CvrConnection(object):
             else:
                 self.download_all_dicts(filename)
         else:
-            updatetime, units_to_update = self.get_update_info()
-            if updatetime < (datetime.datetime.utcnow().replace(tzinfo=pytz.utc) - datetime.timedelta(days=7)):
-                update_time = self.optimize_download_updated(units_to_update)
-                if update_time is None:
-                    return
-            updatetime = updatetime - datetime.timedelta(hours=2)  # just to be sure
-            filename = self.download_all_dicts_from_timestamp(updatetime)
-                # filename = os.path.join(self.datapath, 'cvr_update.json')
+            update_info = self.get_update_list()
+            # update_info = self.optimize_download_updated(update_info)
+            filename = self.download_all_dicts_from_timestamps(update_info)
         print('Start Updating Database')
         self.update_from_mixed_file(filename)
         if old_file_used and not resume_cvr_all:
@@ -144,23 +140,22 @@ class CvrConnection(object):
         search = search.params(**params)
         download_all_dicts_to_file(filename, search)
 
-    def download_all_dicts_from_timestamp(self, last_updated):
+    def download_all_dicts_from_timestamp(self, update_info):
         """
-        :param last_updated: str/datetime
+        :param update_info:  update_info, dict with update info for each unit type
         :return:
         str: filename, datetime: download time, bool: new download or use old file
         """
         print('Download Data Write to File')
-        filename = os.path.join(self.datapath, 'cvr_update.json'.format(last_updated))
+        filename = os.path.join(self.datapath, 'cvr_update.json')
         if os.path.exists(filename):
             "filename exists {0} overwriting".format(filename)
         print('Download updates to file name: {0}'.format(filename))
         params = {'scroll': self.elastic_search_scroll_time, 'size': self.elastic_search_scan_size}
-        # Change to download all files
         for _type in self.source_keymap.values():
             print('Downloading Type {0}'.format(_type))
             search = Search(using=self.elastic_client, index=self.index)
-            search = search.query('range', **{'{0}.sidstOpdateret'.format(_type): {'gte': last_updated}})
+            search = search.query('range', **{'{0}.sidstOpdateret'.format(_type): {'gte': update_info[_type]}})
             search = search.params(**params)
             download_all_dicts_to_file(filename, search, mode='a')
             print('{0} handled:'.format(_type))
@@ -236,7 +231,7 @@ class CvrConnection(object):
         session = get_session()
         try:
             for table_model in delete_table_models:
-                session.query(table_model.enhedsnummer.in_(enh)).delete(synchronize_session=False)
+                session.query(table_model).filter(table_model.enhedsnummer.in_(enh)).delete(synchronize_session=False)
             session.commit()
         except Exception as e:
             print('Delete Exception:', enh)
@@ -310,7 +305,7 @@ class CvrConnection(object):
                 self.update(_dicts, enh_type)
         print('file read all updated')
 
-    def get_update_info(self):
+    def get_update_list(self):
         """ Find units that needs updating and their sidstopdateret (last updated)
 
         :return datetime (min sidstopdateret), list (enhedsnumer, sidstopdateret)
@@ -332,16 +327,19 @@ class CvrConnection(object):
         print('ElasticSearch Query: ', search.to_dict())
         generator = search.scan()
         oldest_sidstopdateret = datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
-        oldest_enh = None
-        oldest_dat = None
-        units_to_update = []
-        for cvr_update in generator:
+        update_dicts = {x: {'units': [], 'sidstopdateret': oldest_sidstopdateret} for x in self.source_keymap.values()}
+
+        # oldest_enh = None
+        # oldest_dat = None
+        # units_to_update = []
+        for cvr_update in tqdm.tqdm(generator):
             enhedsnummer = int(cvr_update.meta.id)
             raw_dat = cvr_update.to_dict()
             samtid = None
             sidstopdateret = None
-
+            _type = None
             for k, v in raw_dat.items():
+                _type = k.split('.')[0]
                 if k.endswith('samtId'):
                     samtid = v[0]
                 if k.endswith('sidstOpdateret'):
@@ -352,11 +350,16 @@ class CvrConnection(object):
             current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
             if samtid > current_update.samtid:
                 utc_sidstopdateret = utc_transform(sidstopdateret)
-                units_to_update.append((enhedsnummer, utc_sidstopdateret))
-        print('oldest sidstopdaret found', oldest_sidstopdateret, oldest_enh, oldest_dat)
-        return min(x[1] for x in units_to_update), units_to_update
+                update_dicts[_type]['sidstopdateret'] = min(utc_sidstopdateret, update_dicts[_type]['sidstopdateret'])
+                update_dicts[_type]['units'].append((enhedsnummer, utc_sidstopdateret))
+                # units_to_update.append((enhedsnummer, utc_sidstopdateret))
+                # oldest_sidstopdateret = min(oldest_sidstopdateret, utc_sidstopdateret)
 
-    def optimize_download_updated(self, units):
+        # print('oldest sidstopdaret found', oldest_sidstopdateret, oldest_enh, oldest_dat)
+        # print('Units to update: {0}'.format(len(units_to_update)))
+        return update_dicts
+
+    def optimize_download_updated(self, update_info):
         """ Due to a missing sidstopdateret for employment updates in cvr
         the sidstopdateret may be inaccurate and thus way to far back in time
         Update the self.max_download_size oldest to see if that helps us use a reasonable sidstopdateret data
@@ -365,11 +368,12 @@ class CvrConnection(object):
         :param units:
         :return:
         """
-        if len(units) < self.max_download_size:
-            enh = [x[0] for x in units]
-            self.update_units(enh)
-            return None
-        units = sorted(units, key=lambda x: x[1])
+        for _type, info in update_info.items():
+            units = info.units
+            if len(units) < self.max_download_size:
+                enh = [x[0] for x in units]
+                self.update_units(enh)
+                sorted(units, key=lambda x: x[1])
         first_enh = [x[0] for x in units[0:self.max_download_size]]
         new_sidst_opdateret = units[self.max_download_size][1]
         self.update_units(first_enh)

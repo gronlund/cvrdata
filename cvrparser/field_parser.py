@@ -32,7 +32,7 @@ def utc_transform(s):
     """
 
     try:
-        d = date_parse(s)
+        d = date_parse(s[0:28])
         if d.utcoffset() is not None:
             return d.astimezone(pytz.utc)
         else:
