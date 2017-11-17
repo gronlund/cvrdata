@@ -331,7 +331,7 @@ class CvrConnection(object):
         search = search.params(**params)
         print('ElasticSearch Query: ', search.to_dict())
         generator = search.scan()
-        oldest_sidstopdateret = datetime.datetime.utcnow().astimezone(datetime.timezone.utc)
+        oldest_sidstopdateret = datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
         oldest_enh = None
         oldest_dat = None
         units_to_update = []

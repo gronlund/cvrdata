@@ -87,21 +87,14 @@ class StaticParser(Parser):
     """ Simple class for parsing static erst data """
 
     def __init__(self, table_class, json_fields, json_timestamps, table_columns):
-        # self.col_names = [x.lower() for x in json_fields + json_timestamps]
         super().__init__(table_class, table_columns)
         self.timestamps = json_timestamps
         self.json_fields = json_fields
 
     def insert(self, data):
-
         dat = [data[x] if x in data else None for x in self.json_fields]
-        #  time_dat = [date_parse(data[x]).astimezone(tz=None) if
-        #  (x in data and data[x] is not None)else None for x in self.timestamps]
         time_dat = [data[x] if (x in data and data[x] is not None)else None for x in self.timestamps]
-        # time_dat = [utc_transform(date_parse(x)).strftime('%Y-%m-%d %H:%M:%S.%f')
-        #             if x is not None else None for x in time_dat]
         time_dat = [utc_transform(x) if x is not None else None for x in time_dat]
-
         dat = tuple(dat + time_dat)
         self.db.insert(dat)
 
