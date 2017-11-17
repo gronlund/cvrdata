@@ -155,7 +155,8 @@ class CvrConnection(object):
         for _type in self.source_keymap.values():
             print('Downloading Type {0}'.format(_type))
             search = Search(using=self.elastic_client, index=self.index)
-            search = search.query('range', **{'{0}.sidstOpdateret'.format(_type): {'gte': update_info[_type]}})
+            search = search.query('range',
+                                  **{'{0}.sidstOpdateret'.format(_type): {'gte': update_info[_type]['sidstopdateret']}})
             search = search.params(**params)
             download_all_dicts_to_file(filename, search, mode='a')
             print('{0} handled:'.format(_type))
@@ -189,7 +190,6 @@ class CvrConnection(object):
             _type: string, type object to update
         """
         enh = [x['enhedsNummer'] for x in dicts]
-        # print('Start Update: {0} units '.format(len(dicts)))
         self.delete(enh, _type)
         try:
             self.insert(dicts, _type)
@@ -328,10 +328,6 @@ class CvrConnection(object):
         generator = search.scan()
         oldest_sidstopdateret = datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
         update_dicts = {x: {'units': [], 'sidstopdateret': oldest_sidstopdateret} for x in self.source_keymap.values()}
-
-        # oldest_enh = None
-        # oldest_dat = None
-        # units_to_update = []
         for cvr_update in tqdm.tqdm(generator):
             enhedsnummer = int(cvr_update.meta.id)
             raw_dat = cvr_update.to_dict()
@@ -339,12 +335,12 @@ class CvrConnection(object):
             sidstopdateret = None
             _type = None
             for k, v in raw_dat.items():
-                _type = k.split('.')[0]
-                if k.endswith('samtId'):
+                _type, elm = k.split('.')
+                if elm == 'samtId':
                     samtid = v[0]
-                if k.endswith('sidstOpdateret'):
+                elif elm == 'sidstOpdateret':
                     sidstopdateret = v[0]
-
+            print('samt og sidst', samtid, sidstopdateret)
             if sidstopdateret is None or samtid is None:
                 continue
             current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
@@ -352,11 +348,7 @@ class CvrConnection(object):
                 utc_sidstopdateret = utc_transform(sidstopdateret)
                 update_dicts[_type]['sidstopdateret'] = min(utc_sidstopdateret, update_dicts[_type]['sidstopdateret'])
                 update_dicts[_type]['units'].append((enhedsnummer, utc_sidstopdateret))
-                # units_to_update.append((enhedsnummer, utc_sidstopdateret))
-                # oldest_sidstopdateret = min(oldest_sidstopdateret, utc_sidstopdateret)
 
-        # print('oldest sidstopdaret found', oldest_sidstopdateret, oldest_enh, oldest_dat)
-        # print('Units to update: {0}'.format(len(units_to_update)))
         print('Update Info:')
         print([(k, v['sidstopdateret']) for k, v in update_dicts.items()])
         return update_dicts
