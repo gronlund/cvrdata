@@ -83,21 +83,21 @@ parser_query.add_argument('-p', '--pid', dest='pid', type=int, help="pnummer of 
 parser_reconfigure = subparsers.add_parser('reconfigure', help='Reconfigure configuration.')
 
 parser_setup = subparsers.add_parser('dbsetup', help='Setup data base tables, views, and indexes')
-parser_setup.add_argument('-t', '--create_tables',
+parser_setup.add_argument('-t', '--tables',
                           dest='create_tables',
                           help='Build tables before update. Build query index and views after first update',
                           default=False,
                           action='store_true',
                           )
-parser_setup.add_argument('-v', '--create_views',
+parser_setup.add_argument('-v', '--views',
                           dest='create_views',
                           help='Build useful data views',
                           default=False,
                           action='store_true'
                           )
-parser_setup.add_argument('-i', '--create_query_indexes',
+parser_setup.add_argument('-i', '--indexes',
                           dest='create_query_indexes',
-                          help='Build useful query indexes - build after first update',
+                          help='Build useful query indexes. Build after first update',
                           default=False,
                           action='store_true'
                           )

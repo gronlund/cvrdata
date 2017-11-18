@@ -30,7 +30,7 @@ def visit_create_view(element, compiler):
          )
 
 
-def create_view(engine, name, select_stmt):
+def create_view(name, select_stmt):
     engine.execute(CreateView(name, select_stmt))
 
 
@@ -81,7 +81,7 @@ def create_virksomhedsform_view():
     create_form = CreateView('virk_virksomhedsform', query)
     engine.execute(create_form)
 
-def create_production_view():
+def create_virk_production_view():
     upd = alchemy_tables.Update
     vs = alchemy_tables.Virksomhed
     query = select([upd.enhedsnummer, vs.cvrnummer, upd.kode.label('punit'), upd.gyldigfra,
@@ -91,5 +91,14 @@ def create_production_view():
     create_punit = CreateView('virk_punits', query)
     engine.execute(create_punit)
 
+def create_virk_status_view():
+    upd = alchemy_tables.Update
+    vs = alchemy_tables.Virksomhedsstatus
+    query = select([upd.enhedsnummer, vs.cvrnummer, upd.kode.label('virkstatus'), upd.gyldigfra,
+                    upd.gyldigtil, upd.sidstopdateret]).\
+                    where(upd.enhedsnummer==vs.enhedsnummer).\
+                    where(upd.felttype=='vir')
+    create_punit = CreateView('virk_punits', query)
+    engine.execute(create_punit)
 
 

@@ -305,45 +305,45 @@ class CvrConnection(object):
 
     def get_update_list(self):
         """ Find units that needs updating and their sidstopdateret (last updated)
-
+        the sidstopdateret may be inaccurate and thus way to far back in time therefore we cannot use take the largest
+        of sidstopdateret from the database.
         :return datetime (min sidstopdateret), list (enhedsnumer, sidstopdateret)
         """
         enh_samtid_map = self.make_samtid_table()
+        oldest_sidstopdateret = datetime.datetime.utcnow().replace(tzinfo=pytz.utc)+datetime.timedelta(days=1)
+        update_dicts = {x: {'units': [], 'sidstopdateret': oldest_sidstopdateret} for x in self.source_keymap.values()}
         if len(enh_samtid_map) == 0:
-            return self.dummy_date, self.dummy_date, []
+            return update_dicts
         dummy = self.update_info(samtid=-1, sidstopdateret=self.dummy_date)
         print('Get update time for all data')
-        search = Search(using=self.elastic_client, index=self.index)
-        search = search.query('match_all')
-        field_list = ['_id'] + ['{0}.sidstOpdateret'.format(key) for key in self.source_keymap.values()] + \
-                     ['{0}.samtId'.format(key) for key in self.source_keymap.values()]
-        search = search.fields(fields=field_list)
-        params = {'scroll': self.elastic_search_scroll_time, 'size': 2048}
-        search = search.params(**params)
-        print('ElasticSearch Query: ', search.to_dict())
-        generator = search.scan()
-        oldest_sidstopdateret = datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
-        update_dicts = {x: {'units': [], 'sidstopdateret': oldest_sidstopdateret} for x in self.source_keymap.values()}
-        for cvr_update in tqdm.tqdm(generator):
-            enhedsnummer = int(cvr_update.meta.id)
-            raw_dat = cvr_update.to_dict()
-            samtid = None
-            sidstopdateret = None
-            _type = None
-            for k, v in raw_dat.items():
-                _type, elm = k.split('.')
-                if elm == 'samtId':
-                    samtid = v[0]
-                elif elm == 'sidstOpdateret':
-                    sidstopdateret = v[0]
-            if sidstopdateret is None or samtid is None:
-                continue
-            current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
-            if samtid > current_update.samtid:
-                utc_sidstopdateret = utc_transform(sidstopdateret)
-                update_dicts[_type]['sidstopdateret'] = min(utc_sidstopdateret, update_dicts[_type]['sidstopdateret'])
-                update_dicts[_type]['units'].append((enhedsnummer, utc_sidstopdateret))
 
+        for _type in self.source_keymap.values():
+            search = Search(using=self.elastic_client, index=self.index)
+            search = search.query('match_all')
+            sidst_key = '{0}.sidstOpdateret'.format(_type)
+            samt_key = '{0}.samtId'.format(_type)
+            field_list = ['_id', sidst_key, samt_key]
+            # field_list = ['_id'] + ['{0}.sidstOpdateret'.format(key) for key in self.source_keymap.values()] + \
+            #          ['{0}.samtId'.format(key) for key in self.source_keymap.values()]
+            search = search.fields(fields=field_list)
+            params = {'scroll': self.elastic_search_scroll_time, 'size': 2**11}
+            search = search.params(**params)
+            print('ElasticSearch Query: ', search.to_dict())
+            generator = search.scan()
+            for cvr_update in tqdm.tqdm(generator):
+                enhedsnummer = int(cvr_update.meta.id)
+                raw_dat = cvr_update.to_dict()
+                samtid = raw_dat[samt_key][0] if samt_key in raw_dat else None
+                sidstopdateret = raw_dat[sidst_key][0] if sidst_key in raw_dat else None
+                if sidstopdateret is None or samtid is None:
+                    continue
+                current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
+                if samtid > current_update.samtid:
+                    utc_sidstopdateret = utc_transform(sidstopdateret)
+                    update_dicts[_type]['sidstopdateret'] = min(utc_sidstopdateret,
+                                                                update_dicts[_type]['sidstopdateret'])
+                    update_dicts[_type]['units'].append((enhedsnummer, utc_sidstopdateret))
+                    # break
         print('Update Info:')
         print([(k, v['sidstopdateret']) for k, v in update_dicts.items()])
         return update_dicts
