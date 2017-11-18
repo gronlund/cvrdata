@@ -340,7 +340,6 @@ class CvrConnection(object):
                     samtid = v[0]
                 elif elm == 'sidstOpdateret':
                     sidstopdateret = v[0]
-            print('samt og sidst', samtid, sidstopdateret)
             if sidstopdateret is None or samtid is None:
                 continue
             current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
