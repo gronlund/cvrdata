@@ -23,3 +23,22 @@ Run the following command:
 ``pip install git+https://github.com/gronlund/cvrdata``
 
 
+#  Command Line Interface
+To use the program from the cmd line use
+
+``python -m cvrparser <command> ``
+
+## Configuration
+To setup database and username and password to use to download from Danish Business Authority servers use
+
+``python -m cvrparser reconfigure``
+
+## Database Tools
+To create the database tables use
+
+``python -m cvrparser dbsetup -t``
+
+## Get Data
+To update the database run
+
+``python -m cvrparser update ``

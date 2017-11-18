@@ -68,14 +68,12 @@ class CvrConnection(object):
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('ids', values=enh)
         print('enhedsnummer search in cvr:', search.to_dict())
-        # generator = search.scan()
-        # hits = [x for x in generator]
         response = search.execute()
         hits = response.hits.hits
         return hits
 
     def get_pnummer(self, pnummer):
-        """ Get CVR info from given production unit id 
+        """ Get CVR info from given production unit id
 
         Args:
         -----
@@ -90,7 +88,7 @@ class CvrConnection(object):
         return hits
 
     def get_cvrnummer(self, cvrnummer):
-        """
+        """ Get CVR info from given cvr id
 
         :param cvrnummer: int, cvrnumber of company
         :return: dict, data for company
@@ -319,10 +317,8 @@ class CvrConnection(object):
         search = search.query('match_all')
         field_list = ['_id'] + ['{0}.sidstOpdateret'.format(key) for key in self.source_keymap.values()] + \
                      ['{0}.samtId'.format(key) for key in self.source_keymap.values()]
-
-        print('field list to get', field_list)
         search = search.fields(fields=field_list)
-        params = {'scroll': self.elastic_search_scroll_time, 'size': 10*self.elastic_search_scan_size}
+        params = {'scroll': self.elastic_search_scroll_time, 'size': 2048}
         search = search.params(**params)
         print('ElasticSearch Query: ', search.to_dict())
         generator = search.scan()
