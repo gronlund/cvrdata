@@ -58,5 +58,4 @@ class PenhedParserFactory(object):
         # telefaxnummer
         vp.add_listener(fp.UploadTimeMap('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping))
         vp.add_listener(parser_organisation.CompanyOrganisationParser())
-
         return vp

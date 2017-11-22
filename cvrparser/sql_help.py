@@ -13,7 +13,7 @@ class MyCache(object):
 
 class SessionCache(MyCache):
 
-    def __init__(self, table_class, columns, batch_size=1000):
+    def __init__(self, table_class, columns, batch_size=2000):
         self.columns = columns
         self.fields = [x.name for x in columns]
         self.cache = []
@@ -21,7 +21,7 @@ class SessionCache(MyCache):
         self.table_class = table_class
 
     def insert(self, val):
-        assert type(val) is tuple
+        # assert type(val) is tuple
         self.cache.append(val)
         if len(self.cache) >= self.batch_size:
             self.commit()
@@ -30,7 +30,7 @@ class SessionCache(MyCache):
 class SessionInsertCache(SessionCache):
     """ Make new Cache on with keystore one without"""
 
-    def __init__(self, table_class, columns, keystore=None, batch_size=1000):
+    def __init__(self, table_class, columns, keystore=None, batch_size=2000):
         super().__init__(table_class, columns, batch_size)
         self.keystore = keystore
 
@@ -53,6 +53,7 @@ class SessionInsertCache(SessionCache):
         session = create_session()
         session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
         session.commit()
+        session.close()
         self.cache = []
 
 
@@ -63,7 +64,7 @@ class SessionUpdateCache(SessionCache):
 
     """
 
-    def __init__(self, table_class, key_columns, data_columns, batch_size=1000):
+    def __init__(self, table_class, key_columns, data_columns, batch_size=2000):
         super().__init__(table_class, key_columns+data_columns, batch_size)
         self.key_columns = key_columns
         self.data_columns = data_columns
@@ -83,4 +84,5 @@ class SessionUpdateCache(SessionCache):
         # insert them again
         session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
         session.commit()
+        session.close()
         self.cache = []

@@ -22,9 +22,6 @@ class UploadStatusTyper(fp.Parser):
             self.keystore.add(key)
             dat = (z['statuskode'], z['kreditoplysningkode'])
             self.db.insert((key, dat))
-            # if (dat[0] is None) or (dat[1] is None):
-            #     print('WHAT IS happening: ', dat, self.db.fields, self.db.to_dicts())
-            #     raise Exception('Stop in the name of love', dat)
 
 
 class StatusKoderMap(fp.Parser):
@@ -39,6 +36,7 @@ class StatusKoderMap(fp.Parser):
         stat_table = alchemy_tables.Statuskode
         query = session.query(stat_table.statusid, stat_table.statuskode, stat_table.kreditoplysningskode)
         dat = query.all()
+        session.close()
         self.field_map = {(y, z): x for (x, y, z) in dat}
         self.field_type = 'status'
     

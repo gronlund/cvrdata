@@ -5,8 +5,8 @@ import logging
 
 from .elastic_cvr_extract import CvrConnection
 from . import cvr_makedb
-from . import setup_database_connection
-
+from . import setup_database_connection, create_session
+import cProfile, pstats, io
 
 def info_print(s):
     stars = '*' * 10            
@@ -78,6 +78,8 @@ def run_delete_test(cvr):
     cvr.delete(penhed, cvr.penhed_type)
         
 
+
+
 if __name__ == '__main__':
     warnings.simplefilter("always")
 
@@ -106,10 +108,12 @@ if __name__ == '__main__':
     parser.add_argument('-log', default=False, dest='logging', help='enable logging', action='store_true')
     parser.add_argument('-resume', default=False, dest='resume',
                         help='resume cvr update - mainly for debugging restart', action='store_true')
+    parser.add_argument('-time', default=False, dest='time',
+                        help='time test', action='store_true')
 
     logging.basicConfig(level=logging.INFO)
     args = parser.parse_args()
-    setup_database_connection('Global')
+    setup_database_connection()
 
     # config = db_setup.get_config()
     setup_args = {}
@@ -148,3 +152,14 @@ if __name__ == '__main__':
     if args.enh is not None:
         info_print('Update specific enhedsnummer:')
         cvr.update_units(args.enh)
+    if args.time:
+        pr = cProfile.Profile()
+        pr.enable()
+        cvr.update_from_mixed_file('/Users/jallan/tmp/cvr_100k.json', force=True)
+        pr.disable()
+        s = io.StringIO()
+        sortby = 'cumtime'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+        print('something')

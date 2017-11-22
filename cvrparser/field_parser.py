@@ -1,10 +1,13 @@
-import json
 import pytz
+import dateutil
+import datetime
+import sys
+from dateutil.parser import parse as date_parse
 from .sql_help import SessionInsertCache
 from .adresse import beliggenhedsadresse_to_str
-from dateutil.parser import parse as date_parse
 from . import alchemy_tables
 from .bug_report import add_error
+
 
 def get_date(st):
     """
@@ -24,13 +27,44 @@ def get_date(st):
     return res[0], res[1], utc_sidstopdateret
 
 
-def utc_transform(s):
-    """ transform string to utc datetime
-
-    :param s: string representation of datetime with utc info
-    :return: datetime in utc timezone
+def fast_time_transform(time):
+    """ transform strings like 2017-01-29T13:06:04.000+01:00 fast
+                               2014-10-02T20:00:00.000Z
+    :param time: str, with utc time
+    :return: datetime
     """
+    val = time[0:28]
 
+    if len(val) > 23 and val[23] != 'Z':
+        utc_sign = val[23]
+        minute = -int(val[27:29])
+        hour = -int(val[24:26])
+        if utc_sign == '+':
+            tzinfo = dateutil.tz.tzoffset(None, hour * 60 * 60 + minute * 60)
+        else:
+            tzinfo = dateutil.tz.tzoffset(None, hour * 60 * 60 + minute * 60)
+    else:
+        tzinfo = pytz.utc
+    return datetime.datetime(
+            year=int(val[0:4]),  # %Y
+            month=int(val[5:7]),  # %m
+            day=int(val[8:10]),  # %d
+            hour=int(val[11:13]),  # +hour,  # %H
+            minute=int(val[14:16]),  # +minute,  # %M
+            second=int(val[17:19]),  # %s
+            microsecond=int(val[20:23]),  # microseconds
+            tzinfo=tzinfo).astimezone(pytz.utc)
+    # tzinfo = dateutil.tz.tzoffset(None, hour * 60 * 60)
+    # int(val[24:26],   # utc offset hour
+    # int(val[27:29]))  # utc offset minute
+
+
+def slow_time_transform(s):
+    """ slow transform of string to time
+
+    :param s: str,
+    :return: datetime of s
+    """
     try:
         d = date_parse(s[0:28])
         if d.utcoffset() is not None:
@@ -40,8 +74,21 @@ def utc_transform(s):
             # assert False, d
             return d.replace(tzinfo=pytz.utc)
     except Exception as e:
-        print('Exception utctransform: ', e, s)
+        add_error('Exception utctransform: {0} {1}'.format(e, s))
         return None
+
+
+def utc_transform(s):
+    """ transform string to utc datetime
+
+    :param s: string representation of datetime with utc info
+    :return: datetime in utc timezone
+    """
+    try:
+        return fast_time_transform(s)
+    except Exception as e:
+        print('fast transform error: ', e, s, file=sys.stderr)
+    return slow_time_transform(s)
 
 
 class ParserInterface(object):
@@ -155,7 +202,9 @@ class UploadTimeMap(Parser):
             tup = (enh, self.field_type, dat, tfrom, tto, utc_sidst_opdateret)
             upload.append(tup)
         # remove duplicates
-        [self.db.insert(x) for x in set(upload)]
+        for x in set(upload):
+            self.db.insert(x)
+        # self.db.insert(x) for x in set(upload)
 
 
 class IdentityDict(object):
@@ -206,36 +255,33 @@ class UploadEmployment(Parser):
 
 def get_upload_employment_year():
     """ Simple parser for yearly employment intervals """
-    aar_class = alchemy_tables.AarsbeskaeftigelseInterval
-    aar_table = alchemy_tables.AarsbeskaeftigelseInterval
-    aar_columns = [aar_table.enhedsnummer, aar_table.aar, aar_table.aarsvaerk, aar_table.ansatte,
-                   aar_table.ansatteinklusivejere]
+    table = alchemy_tables.AarsbeskaeftigelseInterval
+    aar_columns = [table.enhedsnummer, table.aar, table.aarsvaerk, table.ansatte,
+                   table.ansatteinklusivejere]
     aar_field = 'aarsbeskaeftigelse'
     aar_keys = ['aar', 'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte', 'intervalKodeAntalInklusivEjere']
-    afp = UploadEmployment(aar_field, aar_keys, aar_class, aar_columns)
+    afp = UploadEmployment(aar_field, aar_keys, table, aar_columns)
     return afp
 
 
 def get_upload_employment_quarter():
     """ Simple parser for quarterly employment intervals """
-    kvar_class = alchemy_tables.KvartalsbeskaeftigelseInterval
-    kvar_table = alchemy_tables.KvartalsbeskaeftigelseInterval
+    table = alchemy_tables.KvartalsbeskaeftigelseInterval
     kvar_keys = ['aar', 'kvartal', 'antalAarsvaerk', 'antalAnsatte']
     kvar_field = 'kvartalsbeskaeftigelse'
-    kvar_columns = [kvar_table.enhedsnummer, kvar_table.aar, kvar_table.kvartal, kvar_table.aarsvaerk,
-                    kvar_table.ansatte]
-    kfp = UploadEmployment(kvar_field, kvar_keys, kvar_class, kvar_columns)
+    kvar_columns = [table.enhedsnummer, table.aar, table.kvartal, table.aarsvaerk,
+                    table.ansatte]
+    kfp = UploadEmployment(kvar_field, kvar_keys, table, kvar_columns)
     return kfp
 
 
 def get_upload_employment_month():
-    mnd_class = alchemy_tables.MaanedsbeskaeftigelseInterval
-    mnd_table = alchemy_tables.MaanedsbeskaeftigelseInterval
+    table = alchemy_tables.MaanedsbeskaeftigelseInterval
     mnd_field = 'maanedsbeskaeftigelse'
     mnd_keys = ['aar', 'maaned', 'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte']
-    mnd_columns = [mnd_table.enhedsnummer, mnd_table.aar, mnd_table.maaned, mnd_table.aarsvaerk,
-                   mnd_table.ansatte]
-    mfp = UploadEmployment(mnd_field, mnd_keys, mnd_class, mnd_columns)
+    mnd_columns = [table.enhedsnummer, table.aar, table.maaned, table.aarsvaerk,
+                   table.ansatte]
+    mfp = UploadEmployment(mnd_field, mnd_keys, table, mnd_columns)
     return mfp
 
 
@@ -287,13 +333,6 @@ class AddressParser(Parser):
                 else:
                     aid = None
                     ad_status = 'No Id'
-
-                # if aid is None:
-                #     if ad_status == 'nedlagt_adresse':
-                #         print('nedlagt adresse')
-                #     elif ad_status[0:6] == 'udland':
-                #         print('udlandsk adresse - ignore ', ad_status)
-
                 bl = beliggenhedsadresse_to_str(z)
                 self.db.insert((enh, field, ad_status, aid, tfrom, tto, bl, utc_sidstopdateret))
 

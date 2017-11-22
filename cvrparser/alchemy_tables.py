@@ -1,6 +1,6 @@
 # coding: utf-8
 from sqlalchemy import BigInteger, Column, DateTime, Enum, Float, Index, Integer, SmallInteger, String, text, \
-    Text, ForeignKey
+    Text
 from sqlalchemy.ext.declarative import declarative_base
 from . import engine
 

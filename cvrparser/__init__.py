@@ -10,6 +10,7 @@ config_path = Path(__file__).parent / 'config.ini'
 _engine = None
 _session = None
 
+
 class DefaultEngineProxy:
     def __getattr__(self, item):
         return getattr(_engine, item)
@@ -77,7 +78,7 @@ def interactive_configure_connection():
     config_values = {
         'Global': dict(
             host=host, port=port, user=user, passwd=passwd, database=database,
-            sql_type=sql_type, charset='utf8mb4',cvr_user=cvr_user, cvr_passwd=cvr_passwd, data_path=data_path
+            sql_type=sql_type, charset='utf8mb4', cvr_user=cvr_user, cvr_passwd=cvr_passwd, data_path=data_path
         )
     }
     _config = configparser.ConfigParser()
@@ -113,12 +114,11 @@ def setup_database_connection(config_name='Global'):
     _config = read_config()[config_name]
     for k, v in _config.items():
         config[k] = v
-
-
     connection_url = ("{sql_type}://{user}:{passwd}@{host}:{port}/"
                       "{database}?charset={charset}")
     connection_url = connection_url.format(**_config)
-    _engine = create_engine(connection_url, encoding='utf8', echo=False)
+    _engine = create_engine(connection_url, encoding='utf8', echo=False,  pool_size=20, max_overflow=10,
+                            pool_recycle=3600)
     _session = sessionmaker(bind=engine)
 
 

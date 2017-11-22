@@ -7,15 +7,11 @@ import os
 import pytz
 import tqdm
 from .field_parser import utc_transform
-from . import Session, config
+from . import config, create_session
 from . import alchemy_tables
 from .bug_report import add_error
 from . import data_scanner
 from .cvr_download import download_all_dicts_to_file
-
-
-def get_session():
-    return Session()
 
 
 class CvrConnection(object):
@@ -23,6 +19,9 @@ class CvrConnection(object):
     def __init__(self, update_address=False):
         """ Sets everything needed for elasticsearch connection to Danish Business Authority for CVR data extraction
         consider moving elastic search connection into __init__
+        currently inserts 300-400 units per second to database.
+        So insert of all will take around 5-6 hours.
+
 
         Args:
         -----
@@ -36,7 +35,7 @@ class CvrConnection(object):
         user = config['cvr_user']
         password = config['cvr_passwd']
         self.datapath = config['data_path']
-        self.update_batch_size = 128
+        self.update_batch_size = 512
         self.source_keymap = {'virksomhed': 'Vrvirksomhed', 'deltager': 'Vrdeltagerperson',
                               'produktionsenhed': 'VrproduktionsEnhed'}
         self.update_address = update_address
@@ -105,7 +104,7 @@ class CvrConnection(object):
         download updates
         perform updates
         """
-        session = get_session()
+        session = create_session()
         ud_table = alchemy_tables.Update
         res = session.query(ud_table).first()
         session.close()
@@ -224,18 +223,23 @@ class CvrConnection(object):
             print('bad _type: ', _type)
             raise Exception('bad _type')
         delete_table_models.append(static_table)
-
         # statements = [t.delete().where(t.c.enhedsnummer.in_(enh)) for t in delete_tables]
-        session = get_session()
+        session = create_session()
         try:
             for table_model in delete_table_models:
                 session.query(table_model).filter(table_model.enhedsnummer.in_(enh)).delete(synchronize_session=False)
+                # if _type == 'Vrvirksomhed':
+                #     session.query(alchemy_tables.Enhedsrelation).\
+                #         filter(alchemy_tables.Enhedsrelation.enhedsnummer_virksomhed.in_(enh)).\
+                #         delete(synchronize_session=False)
             session.commit()
         except Exception as e:
             print('Delete Exception:', enh)
             print(e)
             session.rollback()
+            session.close()
             raise
+        session.close()
 
     def insert(self, dicts, enh_type):
         """ Insert data from dicts
@@ -260,23 +264,28 @@ class CvrConnection(object):
         print('Make id -> samtId map: units update status map')
         table_models = [alchemy_tables.Virksomhed, alchemy_tables.Produktion, alchemy_tables.Person]
         enh_samtid_map = defaultdict()
-        session = get_session()
+        session = create_session()
         for table in table_models:
             query = session.query(table.enhedsnummer, table.samtid, table.sidstopdateret)
             existing_data = [(x[0], x[1], x[2]) for x in query.all()]
             tmp = {a: self.update_info(samtid=b, sidstopdateret=c) for (a, b, c) in existing_data}
             enh_samtid_map.update(tmp)
+        session.close()
         print('Id map done')
         return enh_samtid_map
 
-    def update_from_mixed_file(self, filename):
+    def update_from_mixed_file(self, filename, force=False):
         """ splits data in file by type and updates the database
 
         :param filename: str, filename full path
+        :param force: bool, force to update all
         :return:
         """
         print('Start Reading From File')
-        enh_samtid_map = self.make_samtid_table()
+        if force:
+            enh_samtid_map = {}
+        else:
+            enh_samtid_map = self.make_samtid_table()
         dummy = self.update_info(samtid=-1, sidstopdateret=self.dummy_date)
         dicts = {x: list() for x in self.source_keymap.values()}
         with open(filename) as f:
@@ -292,7 +301,7 @@ class CvrConnection(object):
                 enhedsnummer = dat['enhedsNummer']
                 samtid = dat['samtId']
                 current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
-                if samtid > current_update.samtid:
+                if samtid is None or samtid > current_update.samtid:
                     # update if new version - currently or sidstopdateret > current_update.sidstopdateret:
                     dicts[dict_type].append(dat)
                 if len(dicts[dict_type]) >= self.update_batch_size:
@@ -306,7 +315,9 @@ class CvrConnection(object):
     def get_update_list(self):
         """ Find units that needs updating and their sidstopdateret (last updated)
         the sidstopdateret may be inaccurate and thus way to far back in time therefore we cannot use take the largest
-        of sidstopdateret from the database.
+        of sidstopdateret from the database. Seems we download like 600 dicts a second with match_all.
+        Should take around 2 hours and 30 minuttes then. This takes 30 so i need to save half an hour on downloads.
+
         :return datetime (min sidstopdateret), list (enhedsnumer, sidstopdateret)
         """
         enh_samtid_map = self.make_samtid_table()
