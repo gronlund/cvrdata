@@ -1,6 +1,6 @@
 import pdb
 from .field_parser import Parser, ParserInterface, get_date
-from .sql_help import SessionUpdateCache  # SessionInsertCache
+from .sql_help import SessionUpdateCache, SessionInsertCache
 from .bug_report import add_error
 from . import alchemy_tables
 
@@ -272,13 +272,13 @@ class OrganisationMemberParser(ParserInterface):
     def __init__(self):
         """ Table should be Enhedsrelation table"""
         table = alchemy_tables.Enhedsrelation
-        key_columns = [table.enhedsnummer_deltager, table.enhedsnummer_virksomhed,
+        key_columns = [table.enhedsnummer_virksomhed, table.enhedsnummer_deltager,
                        table.enhedsnummer_organisation, table.sekvensnr, table.vaerdinavn, table.vaerdi,
                        table.gyldigfra]
         # does not work because this is not the key
         data_columns = [table.gyldigtil, table.sidstopdateret]
-        self.db = SessionUpdateCache(table_class=table, key_columns=key_columns, data_columns=data_columns)
-        # self.db = SessionInsertCache(table_class=table, columns=key_columns+data_columns)
+        # self.db = SessionUpdateCache(table_class=table, key_columns=key_columns, data_columns=data_columns)
+        self.db = SessionInsertCache(table_class=table, columns=key_columns+data_columns)
         self.std_types = {'VALGFORM', 'FUNKTION', 'FORRETNINGSADRESSE', 'SUPPLEANT_FOR_DELTAGER_NR',
                           'EJERANDEL_MEDDELELSE_DATO', 'EJERANDEL_PROCENT', 'EJERANDEL_STEMMERET_PROCENT',
                           'STIFTELSESINFORMATION', 'UDNÆVNT_AF', 'EJERANDEL_KAPITALKLASSE',
@@ -291,7 +291,7 @@ class OrganisationMemberParser(ParserInterface):
         for org in organisationer:
             enhedsnummer_org = org['enhedsNummerOrganisation']
             members = org['medlemsData']
-            tuple_head = (enhedsnummer_deltager, enhedsnummer_company, enhedsnummer_org)
+            tuple_head = (enhedsnummer_company, enhedsnummer_deltager, enhedsnummer_org)
             inserts = []
             for member in members:
                 attributter = member['attributter']
@@ -303,11 +303,12 @@ class OrganisationMemberParser(ParserInterface):
                         key_tuple = tuple_head + (k, membertype, vaerdi['vaerdi'], tfrom)
                         data_tuple = (tto, utc_sidstopdateret)
                         # print('data, key', key_tuple, data_tuple)
-                        #self.db.insert((key_tuple, data_tuple))
-                        inserts.append((key_tuple, data_tuple))
-                        #inserts.append(key_tuple + data_tuple)
+                        # self.db.insert((key_tuple, data_tuple))
+                        # inserts.append((key_tuple, data_tuple))
+                        inserts.append(key_tuple + data_tuple)
             for ins in set(inserts):
                 self.db.insert(ins)
+            inserts.clear()
 
     def commit(self):
         self.db.commit()

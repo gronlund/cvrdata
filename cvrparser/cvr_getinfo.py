@@ -2,6 +2,7 @@ import argparse
 import pprint
 
 from .elastic_cvr_extract import CvrConnection
+from . import setup_database_connection
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Download data from cvr from id')
@@ -20,7 +21,7 @@ if __name__ == '__main__':
     # parser.add_argument('-field', type=str, dest='field', help='Search field')
     # parser.add_argument('-value', type=str, dest='value', help='Search value')
     args = parser.parse_args()
-
+    setup_database_connection()
     cvr = CvrConnection(update_address=False)
 
     keys = ['enh', 'cvr', 'pid']

@@ -32,6 +32,7 @@ class CvrConnection(object):
         self.company_type = 'virksomhed'
         self.penhed_type = 'produktionsenhed'
         self.person_type = 'deltager'
+        print(config.keys())
         user = config['cvr_user']
         password = config['cvr_passwd']
         self.datapath = config['data_path']
@@ -44,12 +45,12 @@ class CvrConnection(object):
                                             retry_on_timeout=True)
         self.elastic_search_scan_size = 128
         self.elastic_search_scroll_time = u'10m'
-        self.max_download_size = 1000  # max number of updates to download without scan scroll
+        self.max_download_size = 100000  # max number of updates to download without scan scroll
         self.update_info = namedtuple('update_info', ['samtid', 'sidstopdateret'])
         self.update_list = namedtuple('update_list', ['enhedsnummer', 'sidstopdateret'])
         self.dummy_date = datetime.datetime(year=1001, month=1, day=1, tzinfo=pytz.utc)
 
-    def search_fielgd_val(self, field, value, size=10):
+    def search_field_val(self, field, value, size=10):
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('match', **{field: value}).extra(size=size)
         print('field value search ', search.to_dict())
@@ -65,7 +66,8 @@ class CvrConnection(object):
           enh: list of CVR ids (enhedsnummer)
         """
         search = Search(using=self.elastic_client, index=self.index)
-        search = search.query('ids', values=enh)
+        search = search.query('ids', values=enh).extra(size=len(enh))
+        # search = search.query('match', values=enh)
         print('enhedsnummer search in cvr:', search.to_dict())
         response = search.execute()
         hits = response.hits.hits
@@ -118,8 +120,7 @@ class CvrConnection(object):
                 self.download_all_dicts(filename)
         else:
             update_info = self.get_update_list()
-            # update_info = self.optimize_download_updated(update_info)
-            filename = self.download_all_dicts_from_timestamp(update_info)
+            filename = self.download_all_dicts_from_update_info(update_info)
         print('Start Updating Database')
         self.update_from_mixed_file(filename)
         if old_file_used and not resume_cvr_all:
@@ -137,7 +138,7 @@ class CvrConnection(object):
         search = search.params(**params)
         download_all_dicts_to_file(filename, search)
 
-    def download_all_dicts_from_timestamp(self, update_info):
+    def download_all_dicts_from_update_info(self, update_info):
         """
         :param update_info:  update_info, dict with update info for each unit type
         :return:
@@ -147,13 +148,20 @@ class CvrConnection(object):
         filename = os.path.join(self.datapath, 'cvr_update.json')
         if os.path.exists(filename):
             "filename exists {0} overwriting".format(filename)
+            os.remove(filename)
         print('Download updates to file name: {0}'.format(filename))
         params = {'scroll': self.elastic_search_scroll_time, 'size': self.elastic_search_scan_size}
         for _type in self.source_keymap.values():
             print('Downloading Type {0}'.format(_type))
             search = Search(using=self.elastic_client, index=self.index)
-            search = search.query('range',
-                                  **{'{0}.sidstOpdateret'.format(_type): {'gte': update_info[_type]['sidstopdateret']}})
+            if len(update_info[_type]['units']) < self.max_download_size:
+                print('Few to update: {0}\nGet in match query:'.format(len(update_info[_type]['units'])))
+                units = [x[0] for x in update_info[_type]['units']]
+                search = search.query('ids', values=units)
+            else:
+                print('To many for match query... - Get a lot of stuff we do not need')
+                search = search.query('range', **{'{0}.sidstOpdateret'.format(_type):
+                                                      {'gte': update_info[_type]['sidstopdateret']}})
             search = search.params(**params)
             download_all_dicts_to_file(filename, search, mode='a')
             print('{0} handled:'.format(_type))
@@ -166,6 +174,7 @@ class CvrConnection(object):
         -----
           enh: list , id of units to update (enhedsnummer)
         """
+        # print('updating units: ', enh)
         data_list = self.get_entity(enh)
         dicts = {x: list() for x in self.source_keymap.values()}
         for data_dict in data_list:
@@ -173,7 +182,7 @@ class CvrConnection(object):
             key = self.source_keymap[dict_type]
             dicts[key].append(data_dict['_source'][key])
             if len(dicts[key]) >= self.update_batch_size:
-                self.update(dicts[key], dict_type)
+                self.update(dicts[key], key)
                 dicts[key].clear()
         for enh_type, _dicts in dicts.items():
             if len(_dicts) > 0:
@@ -228,10 +237,10 @@ class CvrConnection(object):
         try:
             for table_model in delete_table_models:
                 session.query(table_model).filter(table_model.enhedsnummer.in_(enh)).delete(synchronize_session=False)
-                # if _type == 'Vrvirksomhed':
-                #     session.query(alchemy_tables.Enhedsrelation).\
-                #         filter(alchemy_tables.Enhedsrelation.enhedsnummer_virksomhed.in_(enh)).\
-                #         delete(synchronize_session=False)
+            if _type == 'Vrvirksomhed':
+                session.query(alchemy_tables.Enhedsrelation).\
+                    filter(alchemy_tables.Enhedsrelation.enhedsnummer_virksomhed.in_(enh)).\
+                    delete(synchronize_session=False)
             session.commit()
         except Exception as e:
             print('Delete Exception:', enh)
@@ -281,7 +290,7 @@ class CvrConnection(object):
         :param force: bool, force to update all
         :return:
         """
-        print('Start Reading From File')
+        print('Start Reading From File', filename)
         if force:
             enh_samtid_map = {}
         else:
@@ -300,8 +309,12 @@ class CvrConnection(object):
                 dat = raw_dat[dict_type]
                 enhedsnummer = dat['enhedsNummer']
                 samtid = dat['samtId']
+                if dat['samtId'] is None:
+                    add_error('Samtid none.', enhedsnummer)
+                    dat['samtId'] = -1
+                    samtid = -1
                 current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
-                if samtid is None or samtid > current_update.samtid:
+                if samtid > current_update.samtid:
                     # update if new version - currently or sidstopdateret > current_update.sidstopdateret:
                     dicts[dict_type].append(dat)
                 if len(dicts[dict_type]) >= self.update_batch_size:
@@ -355,8 +368,8 @@ class CvrConnection(object):
                                                                 update_dicts[_type]['sidstopdateret'])
                     update_dicts[_type]['units'].append((enhedsnummer, utc_sidstopdateret))
                     # break
-        print('Update Info:')
-        print([(k, v['sidstopdateret']) for k, v in update_dicts.items()])
+        print('Update Info: ')
+        print([(k, v['sidstopdateret'], len(v['units'])) for k, v in update_dicts.items()])
         return update_dicts
 
     def optimize_download_updated(self, update_info):

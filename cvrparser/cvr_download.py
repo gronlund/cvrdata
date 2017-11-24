@@ -14,7 +14,7 @@ def download_all_dicts_to_file(filename, search, mode='w'):
     :return:
     """
     print('Download Data Write to File')
-    print('ElasticSearch Download Scan Query: ', search.to_dict())
+    print('ElasticSearch Download Scan Query: ', str(search.to_dict())[0:1000],' ...')
     generator = search.scan()
     #filename_tmp = '{0}_tmp.json'.format(filename)
     with open(filename, mode) as f:
