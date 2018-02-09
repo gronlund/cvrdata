@@ -42,14 +42,16 @@ class MakeCvrDatabase(object):
         total_length = int(r.headers.get('content-length', 0))
         chunk_size = 1024
         with open(filename, 'wb') as f:
-            for data in tqdm(r.iter_content(chunk_size=chunk_size), total=int(total_length/chunk_size), unit='KB'):
+            for data in tqdm(r.iter_content(chunk_size=chunk_size),
+                             total=int(total_length/chunk_size), unit='KB'):
                 f.write(data)
         return filename
 
     @staticmethod
     def insert_dawa():
-        """ Insert csv file into dawa mysql table 
-        Newest data file can be downloaded by getting  https://dawa.aws.dk/adresser?format=csv
+        """ Insert csv file into dawa mysql table
+        Newest data file can be downloaded by getting
+        https://dawa.aws.dk/adresser?format=csv
         """
         print('---- Insert DAWA Address Data ----')
         filename = MakeCvrDatabase.download_dawa()
@@ -66,7 +68,8 @@ class MakeCvrDatabase(object):
             csv_reader = csv.DictReader(csvfile, delimiter=',')
             db = SessionInsertCache(table, cols)
             for i, row in enumerate(csv_reader):
-                dat = tuple(v if v != '' else None for k, v in row.items() if k in extract)
+                dat = tuple(v if v != '' else None
+                            for k, v in row.items() if k in extract)
                 db.insert(dat)
                 if (i % 1000) == 0:
                     print('Adresses inserted: {0}'.format(i))

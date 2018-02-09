@@ -1,6 +1,8 @@
 import argparse
 import pprint
-from . import (interactive_ensure_config_exists, setup_database_connection, interactive_configure_connection)
+from . import (interactive_ensure_config_exists,
+               setup_database_connection,
+               interactive_configure_connection)
 from .elastic_cvr_extract import CvrConnection
 from . import cvr_makedb
 
@@ -73,16 +75,22 @@ parser_update.add_argument('-r', '--resume',
                            action='store_true'
                            )
 
-parser_dawa = subparsers.add_parser('dawa', help='Download dawa address info and insert into sql database')
+parser_dawa = subparsers.add_parser('dawa',
+                                    help='Download dawa address info and insert into sql database')
+parser_query = subparsers.add_parser('query',
+                                     help='query the erst service for a particular unit')
+parser_query.add_argument('-e', '--enh', dest='enh',
+                          type=int, help="Enhedsnummer Identifier of company")
+parser_query.add_argument('-c', '--cvr', dest='cvr',
+                          type=int, help="CVR Number of company")
+parser_query.add_argument('-p', '--pid', dest='pid',
+                          type=int, help="pnummer of production unit")
 
-parser_query = subparsers.add_parser('query', help='query the erst service for a particular unit')
-parser_query.add_argument('-e', '--enh', dest='enh', type=int, help="Enhedsnummer Identifier of company")
-parser_query.add_argument('-c', '--cvr', dest='cvr', type=int, help="CVR Number of company")
-parser_query.add_argument('-p', '--pid', dest='pid', type=int, help="pnummer of production unit")
+parser_reconfigure = subparsers.add_parser('reconfigure',
+                                           help='Reconfigure configuration.')
 
-parser_reconfigure = subparsers.add_parser('reconfigure', help='Reconfigure configuration.')
-
-parser_setup = subparsers.add_parser('dbsetup', help='Setup data base tables, views, and indexes')
+parser_setup = subparsers.add_parser('dbsetup',
+                                     help='Setup data base tables, views, and indexes')
 parser_setup.add_argument('-t', '--tables',
                           dest='create_tables',
                           help='Build tables before update. Build query index and views after first update',

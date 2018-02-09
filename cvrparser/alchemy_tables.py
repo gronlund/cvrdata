@@ -1,13 +1,29 @@
 # coding: utf-8
-from sqlalchemy import BigInteger, Column, DateTime, Enum, Float, Index, Integer, SmallInteger, String, text, \
-    Text
+from sqlalchemy import (BigInteger, Column, DateTime,
+                        Enum, Float, Index, Integer,
+                        SmallInteger, String, text, Text)
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.automap import automap_base
+from collections import namedtuple
 from . import engine
 
 Base = declarative_base()
 metadata = Base.metadata
 default_start_date = text("'1900-01-01 00:00:00'")
 default_end_date = text("'2200-01-01 00:00:00'")
+
+
+class DBModel(object):
+    def __init__(self):
+        self.engine = engine
+        metadata.reflect(bind=engine, views=True)
+        Base = automap_base(metadata=metadata)
+        Base.prepare()
+        self.engine = engine
+        self.tables = namedtuple('tables',
+                                 metadata.tables.keys())(*metadata.tables.values())
+        self.tables_dict = self.tables._asdict()
+        self.classes = Base.classes
 
 
 class Aarsbeskaeftigelse(Base):
@@ -101,8 +117,10 @@ class Adresseupdate(Base):
     adressematch = Column(String(128, 'utf8mb4_bin'), nullable=False)
     # kode = Column(BigInteger, nullable=False)
     dawaid = Column(String(40, 'utf8mb4_bin'), nullable=True)
-    gyldigfra = Column(DateTime, nullable=False, server_default=default_start_date)
-    gyldigtil = Column(DateTime, nullable=False, server_default=default_end_date)
+    gyldigfra = Column(DateTime, nullable=False,
+                       server_default=default_start_date)
+    gyldigtil = Column(DateTime, nullable=False,
+                       server_default=default_end_date)
     post_string = Column(String(512, 'utf8mb4_bin'))
     sidstopdateret = Column(DateTime, nullable=True)
 
@@ -173,12 +191,18 @@ class Lastupdated(Base):
 class Livsforloeb(Base):
     __tablename__ = 'Livsforloeb'
     __table_args__ = (
-        Index('livsforleb_enheds_index', 'enhedsnummer', 'gyldigfra', 'gyldigtil', unique=True),
+        Index('livsforleb_enheds_index',
+              'enhedsnummer',
+              'gyldigfra',
+              'gyldigtil',
+              unique=True),
     )
     updateid = Column(BigInteger, primary_key=True)
     enhedsnummer = Column(BigInteger, nullable=False)
-    gyldigfra = Column(DateTime, nullable=False, server_default=default_start_date)
-    gyldigtil = Column(DateTime, nullable=False, server_default=default_end_date)
+    gyldigfra = Column(DateTime, nullable=False,
+                       server_default=default_start_date)
+    gyldigtil = Column(DateTime, nullable=False,
+                       server_default=default_end_date)
     sidstopdateret = Column(DateTime, nullable=True)
 
 
@@ -212,8 +236,10 @@ class Organisation(Base):
     enhedsnummer = Column(BigInteger, nullable=False)
     hovedtype = Column(String(256, 'utf8mb4_bin'), nullable=False)
     navn = Column(String(256, 'utf8mb4_bin'), nullable=False)
-    gyldigfra = Column(DateTime, nullable=False, server_default=default_start_date)
-    gyldigtil = Column(DateTime, nullable=False, server_default=default_end_date)
+    gyldigfra = Column(DateTime, nullable=False,
+                       server_default=default_start_date)
+    gyldigtil = Column(DateTime, nullable=False,
+                       server_default=default_end_date)
     sidstopdateret = Column(DateTime, nullable=True)
 
 
@@ -266,15 +292,20 @@ class SpaltningFusion(Base):
     enhedsnummer_organisation = Column(BigInteger, nullable=False)
     spalt_fusion = Column(Enum('spaltning', 'fusion'))
     indud = Column(Enum('indgaaende', 'udgaaende'), nullable=False)
-    gyldigfra = Column(DateTime, nullable=False, server_default=default_start_date)
-    gyldigtil = Column(DateTime, nullable=False, server_default=default_end_date)
+    gyldigfra = Column(DateTime, nullable=False,
+                       server_default=default_start_date)
+    gyldigtil = Column(DateTime, nullable=False,
+                       server_default=default_end_date)
     sidstopdateret = Column(DateTime, nullable=True)
 
 
 class Statuskode(Base):
     __tablename__ = 'Statuskode'
     __table_args__ = (
-        Index('status_kode_kombi_index', 'statuskode', 'kreditoplysningskode', unique=True),
+        Index('status_kode_kombi_index',
+              'statuskode',
+              'kreditoplysningskode',
+              unique=True),
     )
     statusid = Column(Integer, primary_key=True)
     statuskode = Column(Integer, nullable=False)
@@ -287,8 +318,10 @@ class Update(Base):
     enhedsnummer = Column(BigInteger, nullable=False)
     felttype = Column(String(256, 'utf8mb4_bin'), nullable=False)
     kode = Column(BigInteger, nullable=False)
-    gyldigfra = Column(DateTime, nullable=False, server_default=default_start_date)
-    gyldigtil = Column(DateTime, nullable=False, server_default=default_end_date)
+    gyldigfra = Column(DateTime, nullable=False,
+                       server_default=default_start_date)
+    gyldigtil = Column(DateTime, nullable=False,
+                       server_default=default_end_date)
     sidstopdateret = Column(DateTime, nullable=True)
 
 
@@ -321,7 +354,8 @@ class Virksomhedsform(Base):
 class Virksomhedsstatus(Base):
     __tablename__ = 'Virksomhedsstatus'
     virksomhedsstatusid = Column(Integer, primary_key=True)
-    virksomhedsstatus = Column(String(2**8, 'utf8mb4_bin'), nullable=False, unique=True)
+    virksomhedsstatus = Column(String(2**8, 'utf8mb4_bin'),
+                               nullable=False, unique=True)
 
 
 class CreateDatabase(object):
@@ -365,17 +399,27 @@ class CreateDatabase(object):
         :return:
         """
         print('Create Query Indexes')
-        attributter_value_index = Index('attributter_value_index', Attributter.vaerdi)
-        attributter_type_index = Index('attributter_type_index', Attributter.vaerdinavn)
-        # enheds_vaerdinavn_index = Index('enheds_vaerdinavn_index', Enhedsrelation.vaerdinavn, Enhedsrelation.vaerdi)
-        enheds_vaerdi_index = Index('enheds_vaerdi_index', Enhedsrelation.vaerdi)  # text index
+        attributter_value_index = Index('attributter_value_index',
+                                        Attributter.vaerdi)
+        attributter_type_index = Index('attributter_type_index',
+                                       Attributter.vaerdinavn)
+        # enheds_vaerdinavn_index = Index('enheds_vaerdinavn_index',
+        # Enhedsrelation.vaerdinavn, Enhedsrelation.vaerdi)
+        enheds_vaerdi_index = Index('enheds_vaerdi_index',
+                                    Enhedsrelation.vaerdi)  # text index
 
-        update_type_index = Index('updates_type_index', Update.felttype, Update.kode, Update.enhedsnummer,
-                                  Update.gyldigfra, Update.gyldigtil)
-        spalt_org = Index('spalt_virk_index', SpaltningFusion.enhedsnummer_organisation)
+        update_type_index = Index('updates_type_index',
+                                  Update.felttype,
+                                  Update.kode,
+                                  Update.enhedsnummer,
+                                  Update.gyldigfra,
+                                  Update.gyldigtil)
+        spalt_org = Index('spalt_virk_index',
+                          SpaltningFusion.enhedsnummer_organisation)
         org_navn = Index('orgnavn_navn', Organisation.navn)
-        org_hovedtype = Index('orgnavn_hovedtype')
-        enheds_org_index = Index('enheds_org_index', Enhedsrelation.enhedsnummer_organisation)
+        org_hovedtype = Index('orgnavn_hovedtype', Organisation.hovedtype)
+        enheds_org_index = Index('enheds_org_index',
+                                 Enhedsrelation.enhedsnummer_organisation)
         query_indexes = [attributter_type_index,
                          attributter_value_index,
                          enheds_org_index,
@@ -392,24 +436,45 @@ class CreateDatabase(object):
         # text_indexes = [(Enhedsrelation, vaerdi)]
 
     def create_update_indexes(self):
-        """ create (unique) indexes of database that is vital for fast update (deletion/insert)
+        """ create (unique) indexes of database that are vital
+        for fast update (deletion/insert)
 
         :return:
         """
         print('Create Query Indexes')
-        adresse_unique = Index('adresse_time_index', Adresseupdate.enhedsnummer, Adresseupdate.dawaid,
-                               Adresseupdate.gyldigfra, Adresseupdate.gyldigtil, unique=True)
-        attr_enheds_index = Index('attributter_enhedsummer_index', Attributter.enhedsnummer, Attributter.vaerdinavn,
-                                  Attributter.sekvensnr, Attributter.gyldigfra, Attributter.gyldigtil)
-        enheds_deltager = Index('enheds_deltager', Enhedsrelation.enhedsnummer_deltager)
-        enheds_virksomhed_index = Index('enheds_virksomhed_index', Enhedsrelation.enhedsnummer_virksomhed)
-        org_unique = Index('orgnavn_unique', Organisation.enhedsnummer, Organisation.hovedtype, Organisation.navn,
+        adresse_unique = Index('adresse_time_index',
+                               Adresseupdate.enhedsnummer,
+                               Adresseupdate.dawaid,
+                               Adresseupdate.gyldigfra,
+                               Adresseupdate.gyldigtil, unique=True)
+        attr_enheds_index = Index('attributter_enhedsummer_index',
+                                  Attributter.enhedsnummer,
+                                  Attributter.vaerdinavn,
+                                  Attributter.sekvensnr,
+                                  Attributter.gyldigfra,
+                                  Attributter.gyldigtil)
+        enheds_deltager = Index('enheds_deltager',
+                                Enhedsrelation.enhedsnummer_deltager)
+        enheds_virksomhed_index = Index('enheds_virksomhed_index',
+                                        Enhedsrelation.enhedsnummer_virksomhed)
+        org_unique = Index('orgnavn_unique',
+                           Organisation.enhedsnummer,
+                           Organisation.hovedtype,
+                           Organisation.navn,
                            unique=True)
-        spalt_unique = Index('spalt_unique', SpaltningFusion.enhedsnummer, SpaltningFusion.enhedsnummer_organisation,
-                             SpaltningFusion.spalt_fusion, SpaltningFusion.indud, SpaltningFusion.gyldigfra,
+        spalt_unique = Index('spalt_unique',
+                             SpaltningFusion.enhedsnummer,
+                             SpaltningFusion.enhedsnummer_organisation,
+                             SpaltningFusion.spalt_fusion,
+                             SpaltningFusion.indud,
+                             SpaltningFusion.gyldigfra,
                              SpaltningFusion.gyldigtil, unique=True)
-        update_enhedsnummer_index = Index('updates_unique_index', Update.enhedsnummer, Update.felttype, Update.kode,
-                                          Update.gyldigfra, Update.gyldigtil)
+        update_enhedsnummer_index = Index('updates_unique_index',
+                                          Update.enhedsnummer,
+                                          Update.felttype,
+                                          Update.kode,
+                                          Update.gyldigfra,
+                                          Update.gyldigtil)
 
         # enheds_unique = Index('enheds_deltager', Enhedsrelation.enhedsnummer_deltager,
         # Enhedsrelation.enhedsnummer_virksomhed, Enhedsrelation.enhedsnummer_organisation, Enhedsrelation.sekvensnr,

@@ -173,8 +173,8 @@ if __name__ == '__main__':
     if args.time:
         pr = cProfile.Profile()
         pr.enable()
-        #cvr.update_from_mixed_file('/Users/jallan/tmp/cvr_10k.json', force=True)
-        cvr.update_from_mixed_file('/Users/jallan/tmp/cvr_update.json', force=True)
+        cvr.update_from_mixed_file('/Users/jallan/tmp/cvr_10k.json', force=True)
+        # cvr.update_from_mixed_file('/Users/jallan/tmp/cvr_update.json', force=True)
         pr.disable()
         s = io.StringIO()
         sortby = 'cumtime'
