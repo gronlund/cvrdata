@@ -48,7 +48,10 @@ class DefaultSessionProxy:
         return _session(*args, **kwargs)
 
 
-config_fields = ['host', 'port', 'user', 'passwd', 'database', 'sql_type', 'cvr_user', 'cvr_passwd', 'charset',
+config_fields = ['host', 'port', 'user',
+                 'passwd', 'database',
+                 'sql_type', 'cvr_user',
+                 'cvr_passwd', 'charset',
                  'data_path']
 
 
@@ -78,7 +81,9 @@ def interactive_configure_connection():
     config_values = {
         'Global': dict(
             host=host, port=port, user=user, passwd=passwd, database=database,
-            sql_type=sql_type, charset='utf8mb4', cvr_user=cvr_user, cvr_passwd=cvr_passwd, data_path=data_path
+            sql_type=sql_type, charset='utf8mb4',
+            cvr_user=cvr_user, cvr_passwd=cvr_passwd,
+            data_path=data_path
         )
     }
     _config = configparser.ConfigParser()
@@ -117,7 +122,8 @@ def setup_database_connection(config_name='Global'):
     connection_url = ("{sql_type}://{user}:{passwd}@{host}:{port}/"
                       "{database}?charset={charset}")
     connection_url = connection_url.format(**_config)
-    _engine = create_engine(connection_url, encoding='utf8', echo=False,  pool_size=20, max_overflow=10,
+    _engine = create_engine(connection_url, encoding='utf8',
+                            echo=False,  pool_size=20, max_overflow=10,
                             pool_recycle=3600)
     _session = sessionmaker(bind=engine)
 

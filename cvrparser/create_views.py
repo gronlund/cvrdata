@@ -34,7 +34,7 @@ def create_view(name, select_stmt, db):
     if name in db.tables_dict.keys():
         print('{0} exists'.format(name))
         return
-    print('Create View', select_stmt)
+    print('Create View', name, select_stmt)
     engine.execute(CreateView(name, select_stmt))
 
 
@@ -131,7 +131,7 @@ def create_virksomhedsform_view(db):
         where(upd.kode == vf.virksomhedsformkode)
     create_view(view_name, query, db)
 
-    
+
 def create_virk_production_view(db):
     view_name = 'virk_punits'
     upd = alchemy_tables.Update

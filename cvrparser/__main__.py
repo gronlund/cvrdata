@@ -2,7 +2,8 @@ import argparse
 import pprint
 from . import (interactive_ensure_config_exists,
                setup_database_connection,
-               interactive_configure_connection)
+               interactive_configure_connection,
+               read_config)
 from .elastic_cvr_extract import CvrConnection
 from . import cvr_makedb
 
@@ -55,6 +56,12 @@ class Commands:
     def reconfigure(**general_options):
         interactive_configure_connection()
 
+    @staticmethod
+    def showconfig(**general_options):
+        config = read_config()['Global']
+        for key, value in config.items():
+            print(key, value)
+
 
 parser = argparse.ArgumentParser()
 
@@ -88,6 +95,9 @@ parser_query.add_argument('-p', '--pid', dest='pid',
 
 parser_reconfigure = subparsers.add_parser('reconfigure',
                                            help='Reconfigure configuration.')
+
+parser_showconfig = subparsers.add_parser('showconfig',
+                                          help='Show Configuration')
 
 parser_setup = subparsers.add_parser('dbsetup',
                                      help='Setup data base tables, views, and indexes')
