@@ -35,8 +35,8 @@ class SessionInsertCache(SessionCache):
         self.keystore = keystore
 
     def to_dicts(self):
-        """ Make data into dicts for bulk insert, only insert elements that are missing from database
-
+        """ Make data into dicts for bulk insert,
+        only insert elements that are missing from database
         """
         if self.keystore is not None:
             missing = self.keystore.update()
@@ -58,10 +58,10 @@ class SessionInsertCache(SessionCache):
 
 
 class SessionUpdateCache(SessionCache):
-    """ Simple class for implementing insert on duplicate replace on a specific key set (unique index)
+    """ Simple class for insert on duplicate replace on a specific key set
         It is implemented as simply delete all, insert again
-        Inserts must be of the form (key, data) where data should not include the key
-
+        Inserts must be of the form (key, data)
+        where data should not include the key
     """
 
     def __init__(self, table_class, key_columns, data_columns, batch_size=2000):

@@ -1,15 +1,15 @@
-import os
 import warnings
 import argparse
 import logging
 
 from .elastic_cvr_extract import CvrConnection
 from . import cvr_makedb
-from . import setup_database_connection, create_session
+from . import setup_database_connection
 import cProfile, pstats, io
 
+
 def info_print(s):
-    stars = '*' * 10            
+    stars = '*' * 10
     print('{0} {1} {2}'.format(stars, s, stars))
 
 
@@ -71,16 +71,16 @@ def run_small_test(ecvr):
     # companies = [4001582635]
     # companies = [4006898357]
     # companies = companies[0:2]
-    # print('insert company')
+    print('insert companies')
     ecvr.update_units(companies)
     # is a person
-    # people = [4000034553, 4004192836, 4004194126, 4000145625, 4005983489]
+    people = [4000034553, 4004192836, 4004194126, 4000145625, 4005983489]
     # # people = [4000145625]
-    # print('insert people')
-    # ecvr.update_units(people)
-    # print('insert penhed')
-    # penhed = [4002535375, 4002241948, 4003231318]
-    # ecvr.update_units(penhed)
+    print('insert people')
+    ecvr.update_units(people)
+    print('insert penhed')
+    penhed = [4002535375, 4002241948, 4003231318]
+    ecvr.update_units(penhed)
 
 
 def run_delete_test(cvr):

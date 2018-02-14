@@ -41,21 +41,47 @@ class PenhedParserFactory(object):
 
     def get_dyna_parser(self):
         vp = fp.ParserList()
-        vp.add_listener(fp.UploadTimeDirect('hovedbranche', 'branchekode', 'hovedbranche'))
-        vp.add_listener(fp.UploadTimeDirect('bibranche1', 'branchekode', 'bibranche1'))
-        vp.add_listener(fp.UploadTimeDirect('bibranche2', 'branchekode', 'bibranche2'))
-        vp.add_listener(fp.UploadTimeDirect('bibranche3', 'branchekode', 'bibranche3'))
-        vp.add_listener(fp.UploadTimeDirect('virksomhedsrelation', 'cvrNummer', 'penhed'))
+
+        # Direct maps
+        hovedbranche = ('hovedbranche', 'branchekode', 'hovedbranche')
+        bibranche1 = ('bibranche1', 'branchekode', 'bibranche1')
+        bibranche2 = ('bibranche2', 'branchekode', 'bibranche2')
+        bibranche3 = ('bibranche3', 'branchekode', 'bibranche3')
+        virk_relation = ('virksomhedsrelation', 'cvrNummer', 'penhed')
         # navn, binavn
         navn_mapping = self.key_store.get_name_mapping()
-        vp.add_listener(fp.UploadTimeMap('navne', 'navn', 'navn', navn_mapping))
+        navne = ('navne', 'navn', 'navn', navn_mapping)
         # kontaktinfo
         kontakt_mapping = self.key_store.get_kontakt_mapping()
         # elektroniskpost
-        vp.add_listener(fp.UploadTimeMap('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', kontakt_mapping))
+        epost = ('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', kontakt_mapping)
         # telefonnummer
-        vp.add_listener(fp.UploadTimeMap('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping))
+        tlf = ('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping)
         # telefaxnummer
-        vp.add_listener(fp.UploadTimeMap('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping))
+        fax = ('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping)
+
+        UpdateParser = fp.UploadMappedUpdates()
+        for item in [hovedbranche, bibranche1, bibranche2, bibranche3]:
+            UpdateParser.add_mapping(fp.UpdateMapping(*item))
+        for item in [navne, epost, tlf, fax]:
+            UpdateParser.add_mapping(fp.UpdateMapping(*item))
+        vp.add_listener(UpdateParser)
         vp.add_listener(parser_organisation.CompanyOrganisationParser())
+
+        # vp.add_listener(fp.UploadTimeDirect('hovedbranche', 'branchekode', 'hovedbranche'))
+        # vp.add_listener(fp.UploadTimeDirect('bibranche1', 'branchekode', 'bibranche1'))
+        # vp.add_listener(fp.UploadTimeDirect('bibranche2', 'branchekode', 'bibranche2'))
+        # vp.add_listener(fp.UploadTimeDirect('bibranche3', 'branchekode', 'bibranche3'))
+        # vp.add_listener(fp.UploadTimeDirect('virksomhedsrelation', 'cvrNummer', 'penhed'))
+        # # navn, binavn
+        # navn_mapping = self.key_store.get_name_mapping()
+        # vp.add_listener(fp.UploadTimeMap('navne', 'navn', 'navn', navn_mapping))
+        # # kontaktinfo
+        # kontakt_mapping = self.key_store.get_kontakt_mapping()
+        # # elektroniskpost
+        # vp.add_listener(fp.UploadTimeMap('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', kontakt_mapping))
+        # # telefonnummer
+        # vp.add_listener(fp.UploadTimeMap('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping))
+        # # telefaxnummer
+        # vp.add_listener(fp.UploadTimeMap('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping))
         return vp

@@ -6,6 +6,7 @@ import ujson as json
 import os
 import pytz
 import tqdm
+import logging
 from .field_parser import utc_transform
 from . import config, create_session
 from . import alchemy_tables
@@ -17,7 +18,8 @@ from .cvr_download import download_all_dicts_to_file
 class CvrConnection(object):
     """ Class for connecting and retrieving data from danish CVR register """
     def __init__(self, update_address=False):
-        """ Sets everything needed for elasticsearch connection to Danish Business Authority for CVR data extraction
+        """ Setup everything needed for elasticsearch
+        connection to Danish Business Authority for CVR data extraction
         consider moving elastic search connection into __init__
         currently inserts 300-400 units per second to database.
         So insert of all will take around 5-6 hours.
@@ -25,50 +27,60 @@ class CvrConnection(object):
 
         Args:
         -----
-          update_address: bool, determine if parse and insert address as well (slows it down)
+          :param update_address: bool,
+        determine if parse and insert address as well (slows it down)
         """
         self.url = 'http://distribution.virk.dk:80'
         self.index = 'cvr-permanent'
         self.company_type = 'virksomhed'
         self.penhed_type = 'produktionsenhed'
         self.person_type = 'deltager'
-        print(config.keys())
         user = config['cvr_user']
         password = config['cvr_passwd']
         self.datapath = config['data_path']
         self.update_batch_size = 512
-        self.source_keymap = {'virksomhed': 'Vrvirksomhed', 'deltager': 'Vrdeltagerperson',
+        self.source_keymap = {'virksomhed': 'Vrvirksomhed',
+                              'deltager': 'Vrdeltagerperson',
                               'produktionsenhed': 'VrproduktionsEnhed'}
         self.update_address = update_address
         self.address_parser_factory = data_scanner.AddressParserFactory()
-        self.elastic_client = Elasticsearch(self.url, http_auth=(user, password), timeout=60, max_retries=10,
+        self.elastic_client = Elasticsearch(self.url,
+                                            http_auth=(user, password),
+                                            timeout=60,
+                                            max_retries=10,
                                             retry_on_timeout=True)
         self.elastic_search_scan_size = 128
         self.elastic_search_scroll_time = u'10m'
-        self.max_download_size = 100000  # max number of updates to download without scan scroll
-        self.update_info = namedtuple('update_info', ['samtid', 'sidstopdateret'])
-        self.update_list = namedtuple('update_list', ['enhedsnummer', 'sidstopdateret'])
-        self.dummy_date = datetime.datetime(year=1001, month=1, day=1, tzinfo=pytz.utc)
+        # max number of updates to download without scan scroll
+        self.max_download_size = 200000
+        self.update_info = namedtuple('update_info',
+                                      ['samtid', 'sidstopdateret'])
+        self.update_list = namedtuple('update_list',
+                                      ['enhedsnummer', 'sidstopdateret'])
+        self.dummy_date = datetime.datetime(year=1001,
+                                            month=1,
+                                            day=1,
+                                            tzinfo=pytz.utc)
 
     def search_field_val(self, field, value, size=10):
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('match', **{field: value}).extra(size=size)
-        print('field value search ', search.to_dict())
+        logging.info('field value search {0}'.format(search.to_dict()))
         response = search.execute()
         hits = response.hits.hits
         return hits
 
     def get_entity(self, enh):
-        """ Get CVR info from given entities 
+        """ Get CVR info from given entities
         
         Args:
         -----
-          enh: list of CVR ids (enhedsnummer)
+         :param enh: list, list of CVR ids (enhedsnummer)
         """
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('ids', values=enh).extra(size=len(enh))
         # search = search.query('match', values=enh)
-        print('enhedsnummer search in cvr:', search.to_dict())
+        logging.info('enhedsnummer search in cvr: {0}'.format(search.to_dict()))
         response = search.execute()
         hits = response.hits.hits
         return hits
@@ -83,7 +95,7 @@ class CvrConnection(object):
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('match', _type=self.penhed_type)
         search = search.query('match', **{'VrproduktionsEnhed.pNummer': pnummer})
-        print('pnummer search ', search.to_dict())
+        logging.info(('pnummer search: '.format(search.to_dict())))
         response = search.execute()
         hits = response.hits.hits
         return hits
@@ -96,7 +108,7 @@ class CvrConnection(object):
         """
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('match', **{'Vrvirksomhed.cvrNummer': cvrnummer})
-        print('cvr id search: ', search.to_dict())
+        logging.info('cvr id search: {0}'.format(search.to_dict()))
         response = search.execute()
         hits = response.hits.hits
         return hits
@@ -160,8 +172,9 @@ class CvrConnection(object):
                 search = search.query('ids', values=units)
             else:
                 print('To many for match query... - Get a lot of stuff we do not need')
-                search = search.query('range', **{'{0}.sidstOpdateret'.format(_type):
-                                                      {'gte': update_info[_type]['sidstopdateret']}})
+                search = search.query('range',
+                                      **{'{0}.sidstOpdateret'.format(_type):
+                                      {'gte': update_info[_type]['sidstopdateret']}})
             search = search.params(**params)
             download_all_dicts_to_file(filename, search, mode='a')
             print('{0} handled:'.format(_type))
@@ -169,12 +182,11 @@ class CvrConnection(object):
 
     def update_units(self, enh):
         """ Force download and update of given units
-         
-        Args: 
+
+        Args:
         -----
           enh: list , id of units to update (enhedsnummer)
         """
-        # print('updating units: ', enh)
         data_list = self.get_entity(enh)
         dicts = {x: list() for x in self.source_keymap.values()}
         for data_dict in data_list:
@@ -189,7 +201,7 @@ class CvrConnection(object):
                 self.update(_dicts, enh_type)
 
     def update(self, dicts, _type):
-        """ Update given entities 
+        """ Update given entities
 
         Args:
             dicts: list of dictionaries with data
@@ -266,7 +278,7 @@ class CvrConnection(object):
         address_parser.parse_address_data(dicts)
         # print('address data inserted/skipped - start static')
         data_parser.parse_static_data(dicts)
-        # print('static parsed')
+        # printa('static parsed')
 
     def make_samtid_table(self):
         """ Make mapping from entity id to current version """
@@ -275,7 +287,9 @@ class CvrConnection(object):
         enh_samtid_map = defaultdict()
         session = create_session()
         for table in table_models:
-            query = session.query(table.enhedsnummer, table.samtid, table.sidstopdateret)
+            query = session.query(table.enhedsnummer,
+                                  table.samtid,
+                                  table.sidstopdateret)
             existing_data = [(x[0], x[1], x[2]) for x in query.all()]
             tmp = {a: self.update_info(samtid=b, sidstopdateret=c) for (a, b, c) in existing_data}
             enh_samtid_map.update(tmp)

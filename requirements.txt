@@ -7,7 +7,7 @@
 # cvrparser/cvr_showdb.py: 2
 # cvrparser/data_scanner.py: 1
 # cvrparser/sql_help.py: 1
-SQLAlchemy == 1.1.15
+SQLAlchemy >= 1.1.15
 
 # cvrparser/cvr_download.py: 1
 # cvrparser/elastic_cvr_extract.py: 1
@@ -18,7 +18,7 @@ elasticsearch1 == 1.10.0
 elasticsearch1_dsl == 0.0.12
 
 # cvrparser/adresse.py: 3
-numpy == 1.13.3
+numpy >= 1.13.3
 
 # cvrparser/adresse.py: 7
 python_Levenshtein == 0.12.0
@@ -34,7 +34,7 @@ pytz == 2017.3
 # cvrparser/cvr_makedb.py: 4
 requests == 2.18.4
 
-tqdm == 4.19.4
+tqdm >= 4.19.4
 # cvrparser/cvr_download.py: 4
 # cvrparser/elastic_cvr_extract.py: 5
 ujson == 1.35

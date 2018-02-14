@@ -36,12 +36,27 @@ class PersonParserFactory(object):
     def get_dyna_parser(self):
         vp = fp.ParserList()
         name_mapping = self.key_store.get_name_mapping()
-        vp.add_listener(fp.UploadTimeMap('navne', 'navn', 'navn', name_mapping))
-        # kontaktinfo
+        navne = ('navne', 'navn', 'navn', name_mapping)
+        # # kontaktinfo
         contact_mapping = self.key_store.get_kontakt_mapping()
-        vp.add_listener(fp.UploadTimeMap('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', contact_mapping))
-        vp.add_listener(fp.UploadTimeMap('telefonNummer', 'kontaktoplysning', 'telefonnummer', contact_mapping))
-        vp.add_listener(fp.UploadTimeMap('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', contact_mapping))
-        # relation parser
+        epost = ('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', contact_mapping)
+        tlf = ('telefonNummer', 'kontaktoplysning', 'telefonnummer', contact_mapping)
+        fax = ('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', contact_mapping)
+
+        UpdateParser = fp.UploadMappedUpdates()
+        for item in [navne, epost, tlf, fax]:
+            UpdateParser.add_mapping(fp.UpdateMapping(*item))
+        vp.add_listener(UpdateParser)
         # vp.add_listener(orgparser.PersonOrganisationParser(self.dbmodel))
+
+        ## Old Code
+        # name_mapping = self.key_store.get_name_mapping()
+        # vp.add_listener(fp.UploadTimeMap('navne', 'navn', 'navn', name_mapping))
+        # # kontaktinfo
+        # contact_mapping = self.key_store.get_kontakt_mapping()
+        # vp.add_listener(fp.UploadTimeMap('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', contact_mapping))
+        # vp.add_listener(fp.UploadTimeMap('telefonNummer', 'kontaktoplysning', 'telefonnummer', contact_mapping))
+        # vp.add_listener(fp.UploadTimeMap('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', contact_mapping))
+        # relation parser
+
         return vp

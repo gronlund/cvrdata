@@ -171,18 +171,23 @@ class UploadData(Parser):
 
 
 class UploadTimeMap(Parser):
-    """ Class for uploading time period  data from data that must be mapped to a predefined key """
+    """ Class for uploading time period data from data that must be mapped to a predefined key """
 
     def __init__(self, json_field, key, field_type, field_map):
         """
 
         :param json_field: field to extract data from (from dict root)
         :param key: id of data field to extract
-        :param field_type:  database enum type of data to insert (see create_cvr_tables)
-        :param field_map: map to map data to something else
+        :param field_type: database enum type of data to insert (see create_cvr_tables)
+        :param field_map: dict, map data to something else
         """
+        assert False, 'Deprecated'
         table = alchemy_tables.Update
-        columns = [table.enhedsnummer, table.felttype, table.kode, table.gyldigfra, table.gyldigtil,
+        columns = [table.enhedsnummer,
+                   table.felttype,
+                   table.kode,
+                   table.gyldigfra,
+                   table.gyldigtil,
                    table.sidstopdateret]
         super().__init__(table, columns, keystore=None)
         self.json_field = json_field
@@ -191,6 +196,7 @@ class UploadTimeMap(Parser):
         self.field_type = field_type
 
     def insert(self, data):
+        assert False
         enh = data['enhedsNummer']
         upload = []
         for z in data[self.json_field]:
@@ -212,10 +218,74 @@ class IdentityDict(object):
         return item
 
 
+class UpdateMapping():
+
+    def __init__(self, json_field, key, field_type, field_map=None):
+        """
+        :param json_field: str, field to extract data from (from dict root)
+        :param key: str, id of data field to extract
+        :param field_type: str, database enum type of data to insert (see create_cvr_tables)
+        :param field_map: dict, map data to something else
+        """
+        self.json_field = json_field
+        self.key = key
+        self.field_type = field_type
+        if field_map is None:
+            self.field_map = IdentityDict()
+        else:
+            self.field_map = field_map
+
+    def __str__(self):
+        return ' '.join([self.json_field, self.key, self.field_type])
+
+
+class UploadMappedUpdates(Parser):
+
+    def __init__(self):
+        """
+
+        :param map_list: list, Updatemappiong
+        """
+        self.updatemap_list = []
+        table = alchemy_tables.Update
+        columns = [table.enhedsnummer,
+                   table.felttype,
+                   table.kode,
+                   table.gyldigfra,
+                   table.gyldigtil,
+                   table.sidstopdateret]
+        super().__init__(table, columns, keystore=None)
+
+    def add_mapping(self, mapping):
+        """
+
+        :param mapping: UpdateMapping
+        :return:
+        """
+        self.updatemap_list.append(mapping)
+
+    def insert(self, data):
+        enh = data['enhedsNummer']
+        upload = []
+        for update_mapping in self.updatemap_list:
+            for z in data[update_mapping.json_field]:
+                val = z[update_mapping.key]
+                if val is None:
+                    continue
+                dat = update_mapping.field_map[val]
+                tfrom, tto, utc_sidst_opdateret = get_date(z)
+                tup = (enh, update_mapping.field_type, dat, tfrom, tto, utc_sidst_opdateret)
+                upload.append(tup)
+            # remove duplicates
+        for x in set(upload):
+            self.db.insert(x)
+
+
 class UploadTimeDirect(UploadTimeMap):
     """ Class for directly uploading data values"""
 
     def __init__(self, json_field, key, field_type):
+        assert False, 'Deprecated'
         super().__init__(json_field, key, field_type, IdentityDict())
 
 

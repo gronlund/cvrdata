@@ -1,4 +1,3 @@
-from sqlalchemy import select, tuple_
 from . import parser_company as virksomhed_parser
 from . import parser_person as person_parser
 from . import parser_punit as penhed_parser

@@ -29,12 +29,18 @@ class StatusKoderMap(fp.Parser):
 
     def __init__(self):
         table = alchemy_tables.Update
-        columns = [table.enhedsnummer, table.felttype, table.kode, table.gyldigfra, table.gyldigtil,
+        columns = [table.enhedsnummer,
+                   table.felttype,
+                   table.kode,
+                   table.gyldigfra,
+                   table.gyldigtil,
                    table.sidstopdateret]
         super().__init__(table_class=table, columns=columns, keystore=None)
         session = create_session()
         stat_table = alchemy_tables.Statuskode
-        query = session.query(stat_table.statusid, stat_table.statuskode, stat_table.kreditoplysningskode)
+        query = session.query(stat_table.statusid,
+                              stat_table.statuskode,
+                              stat_table.kreditoplysningskode)
         dat = query.all()
         session.close()
         self.field_map = {(y, z): x for (x, y, z) in dat}
@@ -59,13 +65,18 @@ class VirksomhedParserFactory(object):
         self.key_store = key_store
         
     def get_static_parser(self):
-        """ return parser for static data fields
-            cvrNummer, dataAdgang, fejlBeskrivelse, fejlRegistreret, fejlVedIndlaesning, naermesteFremtidigeDato,
-            reklamebeskyttet, samtId, sidstIndlaest, sidstOpdateret, virkningsAktoer
+        """ Return parser for static data fields
+            cvrNummer, dataAdgang, fejlBeskrivelse, fejlRegistreret,
+            fejlVedIndlaesning, naermesteFremtidigeDato,
+            reklamebeskyttet, samtId, sidstIndlaest,
+            sidstOpdateret, virkningsAktoer
         """
-        timestamps = ['naermesteFremtidigeDato', 'sidstIndlaest', 'sidstOpdateret']        
-        json_fields = ['enhedsNummer', 'cvrNummer', 'enhedstype', 'dataAdgang', 'brancheAnsvarskode', 'fejlBeskrivelse',
-                       'fejlRegistreret', 'fejlVedIndlaesning', 'reklamebeskyttet', 'samtId', 'virkningsAktoer']
+        timestamps = ['naermesteFremtidigeDato',
+                      'sidstIndlaest', 'sidstOpdateret']
+        json_fields = ['enhedsNummer', 'cvrNummer', 'enhedstype',
+                       'dataAdgang', 'brancheAnsvarskode', 'fejlBeskrivelse',
+                       'fejlRegistreret', 'fejlVedIndlaesning',
+                       'reklamebeskyttet', 'samtId', 'virkningsAktoer']
         table = alchemy_tables.Virksomhed
         table_columns = [table.enhedsnummer, table.cvrnummer, table.enhedstype, table.dataadgang,
                          table.brancheansvarskode, table.fejlbeskrivelse, table.fejlregistreret,
@@ -86,7 +97,10 @@ class VirksomhedParserFactory(object):
             'table_class': alchemy_tables.Virksomhedsform,
             'json_fields': ['virksomhedsform'],
             'key': 'virksomhedsformkode',
-            'data_fields': ['virksomhedsformkode', 'kortBeskrivelse', 'langBeskrivelse', 'ansvarligDataleverandoer'],
+            'data_fields': ['virksomhedsformkode',
+                            'kortBeskrivelse',
+                            'langBeskrivelse',
+                            'ansvarligDataleverandoer'],
             'columns': [alchemy_tables.Virksomhedsform.virksomhedsformkode,
                         alchemy_tables.Virksomhedsform.kortbeskrivelse,
                         alchemy_tables.Virksomhedsform.langbeskrivelse,
@@ -114,7 +128,9 @@ class VirksomhedParserFactory(object):
         vp.add_listener(fp.ParserFactory.get_branche_parser(self.key_store))
         vp.add_listener(fp.ParserFactory.get_navne_parser(self.key_store))
         vp.add_listener(fp.ParserFactory.get_kontakt_parser(self.key_store))
-        configs = [virksomhedsform_config, virksomhedsstatus_config, regnummer_config]
+        configs = [virksomhedsform_config,
+                   virksomhedsstatus_config,
+                   regnummer_config]
         for config in configs:
             vp.add_listener(fp.UploadData(**config))
         # status  needs double key
@@ -132,40 +148,94 @@ class VirksomhedParserFactory(object):
     def get_dyna_parser(self):
         """ Creates data parsing objects for dynamic comapny cvr data fields """
         vp = fp.ParserList()
-        # produktionsenheder
-        vp.add_listener(fp.UploadTimeDirect('penheder', 'pNummer', 'penhed'))
-        # virksomhedsform
-        vp.add_listener(fp.UploadTimeDirect('virksomhedsform', 'virksomhedsformkode', 'virksomhedsform'))
-        # brancher
-        vp.add_listener(fp.UploadTimeDirect('hovedbranche', 'branchekode', 'hovedbranche'))
-        vp.add_listener(fp.UploadTimeDirect('bibranche1', 'branchekode', 'bibranche1'))
-        vp.add_listener(fp.UploadTimeDirect('bibranche2', 'branchekode', 'bibranche2'))
-        vp.add_listener(fp.UploadTimeDirect('bibranche3', 'branchekode', 'bibranche3'))
         vp.add_listener(StatusKoderMap())
-        # virksomhedsstatus
-        virksomhedsstatus_mapping = self.key_store.get_virksomhedsstatus_mapping()
-        vp.add_listener(fp.UploadTimeMap('virksomhedsstatus', 'status', 'virksomhedsstatus',
-                                         virksomhedsstatus_mapping))
-        # regnummer
+
+        # Direct Inserts
+        virksomhedsform = ('virksomhedsform', 'virksomhedsformkode', 'virksomhedsform')
+        hovedbranche = ('hovedbranche', 'branchekode','hovedbranche')
+        bibranche1 = ('bibranche1', 'branchekode', 'bibranche1')
+        bibranche2 =  ('bibranche2', 'branchekode', 'bibranche2')
+        bibranche3 = ('bibranche3', 'branchekode', 'bibranche3')
+        penheder = ('penheder', 'pNummer', 'penhed')
+
+        # Mapped Inserts
         regnummer_mapping = self.key_store.get_regnummer_mapping()
-        vp.add_listener(fp.UploadTimeMap('regNummer', 'regnummer', 'regnummer', regnummer_mapping))
-        # navn, binavn
+        regnummer = ('regNummer', 'regnummer', 'regnummer', regnummer_mapping)
+        # # navn, binavn
         name_mapping = self.key_store.get_name_mapping()
-        vp.add_listener(fp.UploadTimeMap('navne', 'navn', 'navn', name_mapping))
-        vp.add_listener(fp.UploadTimeMap('binavne', 'navn', 'binavn', name_mapping))
+        navne = ('navne', 'navn', 'navn', name_mapping)
+        binavne = ('binavne', 'navn', 'binavn', name_mapping)
         # kontaktinfo
         kontakt_mapping = self.key_store.get_kontakt_mapping()
         # elektroniskpost
-        vp.add_listener(fp.UploadTimeMap('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', kontakt_mapping))
+        epost = ('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', kontakt_mapping)
         # telefonnummer
-        vp.add_listener(fp.UploadTimeMap('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping))
+        tlf = ('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping)
         # telefaxnummer
-        vp.add_listener(fp.UploadTimeMap('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping))
-        # obligatoriskkemail
-        vp.add_listener(fp.UploadTimeMap('obligatoriskEmail', 'kontaktoplysning', 'obligatoriskemail', kontakt_mapping))
-        # hjemmeside
-        vp.add_listener(fp.UploadTimeMap('hjemmeside', 'kontaktoplysning', 'hjemmeside', kontakt_mapping))
-        # relation parser
+        fax = ('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping)
+        # # obligatoriskkemail
+        email = ('obligatoriskEmail', 'kontaktoplysning', 'obligatoriskemail', kontakt_mapping)
+        # # hjemmeside
+        hjemmeside = ('hjemmeside', 'kontaktoplysning', 'hjemmeside', kontakt_mapping)
+
+        UpdateParser = fp.UploadMappedUpdates()
+        for item in (virksomhedsform, hovedbranche, bibranche1, bibranche2, bibranche3, penheder):
+            UpdateParser.add_mapping(fp.UpdateMapping(*item))
+        for item in (regnummer, navne, binavne, epost, tlf, fax, email, hjemmeside):
+            UpdateParser.add_mapping(fp.UpdateMapping(*item))
+
+        vp.add_listener(UpdateParser)
         vp.add_listener(parser_organisation.CompanyOrganisationParser())
         vp.add_listener(parser_organisation.SpaltningFusionParser())
+
+        # produktionsenheder
+        # vp.add_listener(fp.UploadTimeDirect('penheder', 'pNummer', 'penhed'))
+        # # virksomhedsform
+        # vp.add_listener(fp.UploadTimeDirect('virksomhedsform',
+        #                                     'virksomhedsformkode',
+        #                                     'virksomhedsform'))
+        # # brancher
+        # vp.add_listener(fp.UploadTimeDirect('hovedbranche',
+        #                                     'branchekode',
+        #                                     'hovedbranche'))
+        # vp.add_listener(fp.UploadTimeDirect('bibranche1',
+        #                                     'branchekode',
+        #                                     'bibranche1'))
+        # vp.add_listener(fp.UploadTimeDirect('bibranche2',
+        #                                     'branchekode',
+        #                                     'bibranche2'))
+        # vp.add_listener(fp.UploadTimeDirect('bibranche3',
+        #                                     'branchekode',
+        #                                     'bibranche3'))
+        # vp.add_listener(StatusKoderMap())
+        # # virksomhedsstatus
+        # virksomhedsstatus_mapping = self.key_store.get_virksomhedsstatus_mapping()
+        # vp.add_listener(fp.UploadTimeMap('virksomhedsstatus',
+        #                                  'status',
+        #                                  'virksomhedsstatus',
+        #                                  virksomhedsstatus_mapping))
+        # # regnummer
+        # regnummer_mapping = self.key_store.get_regnummer_mapping()
+        # vp.add_listener(fp.UploadTimeMap('regNummer', 'regnummer', 'regnummer', regnummer_mapping))
+        # # navn, binavn
+        # name_mapping = self.key_store.get_name_mapping()
+        # vp.add_listener(fp.UploadTimeMap('navne', 'navn', 'navn', name_mapping))
+        # vp.add_listener(fp.UploadTimeMap('binavne', 'navn', 'binavn', name_mapping))
+        # # kontaktinfo
+        # kontakt_mapping = self.key_store.get_kontakt_mapping()
+        # # elektroniskpost
+        # vp.add_listener(fp.UploadTimeMap('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', kontakt_mapping))
+        # # telefonnummer
+        # vp.add_listener(fp.UploadTimeMap('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping))
+        # # telefaxnummer
+        # vp.add_listener(fp.UploadTimeMap('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping))
+        # # obligatoriskkemail
+        # vp.add_listener(fp.UploadTimeMap('obligatoriskEmail', 'kontaktoplysning', 'obligatoriskemail', kontakt_mapping))
+        # # hjemmeside
+        # vp.add_listener(fp.UploadTimeMap('hjemmeside', 'kontaktoplysning', 'hjemmeside', kontakt_mapping))
+        # relation parser
+        # vp.add_listener(fp.UploadTimeDirect('penheder', 'pNummer', 'penhed'))
+        # # virksomhedsform
+
         return vp
+
