@@ -398,15 +398,10 @@ class CreateDatabase(object):
 
         :return:
         """
-        print('Create Query Indexes')
-        attributter_value_index = Index('attributter_value_index',
-                                        Attributter.vaerdi)
         attributter_type_index = Index('attributter_type_index',
                                        Attributter.vaerdinavn)
         # enheds_vaerdinavn_index = Index('enheds_vaerdinavn_index',
         # Enhedsrelation.vaerdinavn, Enhedsrelation.vaerdi)
-        enheds_vaerdi_index = Index('enheds_vaerdi_index',
-                                    Enhedsrelation.vaerdi)  # text index
 
         update_type_index = Index('updates_type_index',
                                   Update.felttype,
@@ -417,17 +412,17 @@ class CreateDatabase(object):
         spalt_org = Index('spalt_virk_index',
                           SpaltningFusion.enhedsnummer_organisation)
         org_navn = Index('orgnavn_navn', Organisation.navn)
-        org_hovedtype = Index('orgnavn_hovedtype', Organisation.hovedtype)
+        org_hovedtype = Index('orgnavn_hovedtype', Organisation.hovedtype, Organisation.navn)
         enheds_org_index = Index('enheds_org_index',
                                  Enhedsrelation.enhedsnummer_organisation)
-        query_indexes = [attributter_type_index,
-                         attributter_value_index,
+        query_indexes = [# attributter_type_index,
+                         # attributter_value_index,
                          enheds_org_index,
-                         enheds_vaerdi_index,
+                         # enheds_vaerdi_index,
                          # enheds_vaerdinavn_index,
-                         org_navn,
-                         org_hovedtype,
-                         spalt_org,
+                         # org_navn,
+                         # org_hovedtype,
+                         # spalt_org,
                          update_type_index,
                          ]
         for index in query_indexes:
@@ -435,13 +430,22 @@ class CreateDatabase(object):
             index.create(engine)
         # text_indexes = [(Enhedsrelation, vaerdi)]
 
+    def create_text_indexes(self):
+        enheds_vaerdi_index = Index('enheds_vaerdi_index',
+                                    Enhedsrelation.vaerdi)  # text index
+        attributter_value_index = Index('attributter_value_index',
+                                        Attributter.vaerdi)
+
+        pass
+
+
     def create_update_indexes(self):
         """ create (unique) indexes of database that are vital
         for fast update (deletion/insert)
 
         :return:
         """
-        print('Create Query Indexes')
+        print('Create Update Indexes')
         adresse_unique = Index('adresse_time_index',
                                Adresseupdate.enhedsnummer,
                                Adresseupdate.dawaid,
