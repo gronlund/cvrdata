@@ -159,6 +159,9 @@ class VirksomhedParserFactory(object):
         penheder = ('penheder', 'pNummer', 'penhed')
 
         # Mapped Inserts
+        virksomhedsstatus_mapping = self.key_store.get_virksomhedsstatus_mapping()
+        virksomhedsstatus = ('virksomhedsstatus', 'status', 'virksomhedsstatus', virksomhedsstatus_mapping)
+
         regnummer_mapping = self.key_store.get_regnummer_mapping()
         regnummer = ('regNummer', 'regnummer', 'regnummer', regnummer_mapping)
         # # navn, binavn
@@ -181,7 +184,7 @@ class VirksomhedParserFactory(object):
         UpdateParser = fp.UploadMappedUpdates()
         for item in (virksomhedsform, hovedbranche, bibranche1, bibranche2, bibranche3, penheder):
             UpdateParser.add_mapping(fp.UpdateMapping(*item))
-        for item in (regnummer, navne, binavne, epost, tlf, fax, email, hjemmeside):
+        for item in (virksomhedsstatus, regnummer, navne, binavne, epost, tlf, fax, email, hjemmeside):
             UpdateParser.add_mapping(fp.UpdateMapping(*item))
 
         vp.add_listener(UpdateParser)
