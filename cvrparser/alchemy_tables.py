@@ -427,7 +427,11 @@ class CreateDatabase(object):
                          ]
         for index in query_indexes:
             print('Creating index', index.name)
-            index.create(engine)
+            try:
+                index.create(engine)
+            except Exception as e:
+                print(e)
+            
         # text_indexes = [(Enhedsrelation, vaerdi)]
 
     def create_text_indexes(self):
