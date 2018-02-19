@@ -44,6 +44,7 @@ def create_views():
     create_branche_view(db)
     create_virk_production_view(db)
     create_virksomhedsform_view(db)
+    create_virk_status_view(db)
     create_relation_view(db)
     db = alchemy_tables.DBModel()
     create_board_view(db)
@@ -144,18 +145,33 @@ def create_virk_production_view(db):
     create_view(view_name, query, db)
 
 
-def create_virk_status_view():
+def create_virk_status_view(db):
     upd = alchemy_tables.Update
-    vs = alchemy_tables.Virksomhedsstatus
+    vs = alchemy_tables.Virksomhed
+    stat = alchemy_tables.Virksomhedsstatus
     query = select([upd.enhedsnummer, vs.cvrnummer,
-                    upd.kode.label('virkstatus'),
+                    upd.kode.label('virksomhedsstatuskode'),
+                    stat.virksomhedsstatus,
+                    stat.
                     upd.gyldigfra,
                     upd.gyldigtil, upd.sidstopdateret]).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
-        where(upd.felttype == 'vir')
-    create_punit = CreateView('virk_punits', query)
-    engine.execute(create_punit)
+        where(upd.felttype == 'virksomhedsstatus').\
+        where(stat.virksomhedsstatusid==upd.kode)
+    create_view('virk_virksomhedsstatus', query, db)
 
+def create_virk_name_view(db):
+    view_name = 'virk_navne'
+    upd = alchemy_tables.Update
+    vs = alchemy_tables.Virksomhed
+    navn = alchemy_tables.Navne
+    query = select([upd.enhedsnummer, vs.cvrnummer,
+                    upd.kode.label('navnid'),
+                    navn.navn,
+                    upd.gyldigfra,
+                    upd.gyldigtil, upd.sidstopdateret]).\
+        where(upd.enhedsnummer == vs.enhedsnummer).\
+        where(upd.felttype.in_(['navn', 'binavn'])).\
+        where(upd.kode==navn.navnid)
+    create_view(view_name, query, db)
 
-# create bestyrelse_view
-# create ejer_views - reele, og bare ejere.
