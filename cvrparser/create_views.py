@@ -120,13 +120,17 @@ def create_real_owner_view(db):
 def create_virksomhedsform_view(db):
     view_name = 'virk_virksomhedsform'
     upd = alchemy_tables.Update
-    vf = alchemy_tables.Virksomhedsform
     vs = alchemy_tables.Virksomhed
-    query = select([upd.enhedsnummer, vs.cvrnummer,
+    vf = alchemy_tables.Virksomhedsform
+    query = select([upd.enhedsnummer,
+                    vs.cvrnummer,
                     upd.kode.label('formkode'),
-                    vf.kortbeskrivelse, vf.langbeskrivelse,
-                    vf.ansvarligdataleverandoer, upd.gyldigfra,
-                    upd.gyldigtil, upd.sidstopdateret]).\
+                    vf.kortbeskrivelse,
+                    vf.langbeskrivelse,
+                    vf.ansvarligdataleverandoer,
+                    upd.gyldigfra,
+                    upd.gyldigtil,
+                    upd.sidstopdateret]).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype == 'virksomhedsform').\
         where(upd.kode == vf.virksomhedsformkode)
@@ -137,9 +141,12 @@ def create_virk_production_view(db):
     view_name = 'virk_punits'
     upd = alchemy_tables.Update
     vs = alchemy_tables.Virksomhed
-    query = select([upd.enhedsnummer, vs.cvrnummer, upd.kode.label('punit'),
+    query = select([upd.enhedsnummer,
+                    vs.cvrnummer,
+                    upd.kode.label('punit'),
                     upd.gyldigfra,
-                    upd.gyldigtil, upd.sidstopdateret]).\
+                    upd.gyldigtil,
+                    upd.sidstopdateret]).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype == 'penhed')
     create_view(view_name, query, db)
@@ -149,15 +156,16 @@ def create_virk_status_view(db):
     upd = alchemy_tables.Update
     vs = alchemy_tables.Virksomhed
     stat = alchemy_tables.Virksomhedsstatus
-    query = select([upd.enhedsnummer, vs.cvrnummer,
+    query = select([upd.enhedsnummer,
+                    vs.cvrnummer,
                     upd.kode.label('virksomhedsstatuskode'),
                     stat.virksomhedsstatus,
-                    stat.
                     upd.gyldigfra,
                     upd.gyldigtil, upd.sidstopdateret]).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype == 'virksomhedsstatus').\
         where(stat.virksomhedsstatusid==upd.kode)
+    print(query)
     create_view('virk_virksomhedsstatus', query, db)
 
 def create_virk_name_view(db):
