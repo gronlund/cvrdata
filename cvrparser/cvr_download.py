@@ -6,17 +6,18 @@ import logging
 import argparse
 import tqdm
 
+
 def download_all_dicts_to_file(filename, search, mode='w'):
     """ Download data from elastic search server
 
     :param filename: str, name of file to save data
     :param search: elasticsearch search object to query
-    :return:
+    :param mode, char, file write mode (w, a)
+    :return filename, str:
     """
     print('Download Data Write to File')
-    print('ElasticSearch Download Scan Query: ', str(search.to_dict())[0:1000],' ...')
+    print('ElasticSearch Download Scan Query: ', str(search.to_dict())[0:1000], ' ...')
     generator = search.scan()
-    #filename_tmp = '{0}_tmp.json'.format(filename)
     with open(filename, mode) as f:
         for obj in tqdm.tqdm(generator):
             json.dump(obj.to_dict(), f)
@@ -36,17 +37,18 @@ if __name__ == '__main__':
     url = 'http://distribution.virk.dk:80'
     index = 'cvr-permanent'
     # Make Elastic Client - arg names should be understandable - you can just hardcode them
-    elastic_client = Elasticsearch(url, http_auth=(args.cvruser, args.cvrpass), timeout=60, max_retries=10, retry_on_timeout=True)
+    elastic_client = Elasticsearch(url, http_auth=(args.cvruser, args.cvrpass),
+                                   timeout=60, max_retries=10, retry_on_timeout=True)
     # chunk size
     elastic_search_scan_size = 128
     # server keep alive time
     elastic_search_scroll_time = u'5m'
     # place to store file
-    filename = os.path.join('./', 'cvr_all.json')
+    json_filename = os.path.join('./', 'cvr_all.json')
     # set elastic search params
     params = {'scroll': elastic_search_scroll_time, 'size': elastic_search_scan_size}
     # create elasticsearch search object
-    search = Search(using=elastic_client, index=index)
-    search = search.query('match_all')
-    search = search.params(**params)
-    download_all_dicts_to_file(filename=filename, search=search)
+    el_search = Search(using=elastic_client, index=index)
+    el_search = el_search.query('match_all')
+    el_search = el_search.params(**params)
+    download_all_dicts_to_file(filename=json_filename, search=el_search)

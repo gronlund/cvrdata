@@ -63,8 +63,9 @@ class StatusKoderMap(fp.Parser):
 class VirksomhedParserFactory(object):
     def __init__(self, key_store):
         self.key_store = key_store
-        
-    def get_static_parser(self):
+
+    @staticmethod
+    def get_static_parser():
         """ Return parser for static data fields
             cvrNummer, dataAdgang, fejlBeskrivelse, fejlRegistreret,
             fejlVedIndlaesning, naermesteFremtidigeDato,
@@ -135,11 +136,11 @@ class VirksomhedParserFactory(object):
             vp.add_listener(fp.UploadData(**config))
         # status  needs double key
         vp.add_listener(UploadStatusTyper(key_store=self.key_store.get_status_mapping()))
-        # livsforloeb
+        # livsforloeb - move to dyna parser
         vp.add_listener(fp.UploadLivsforloeb())
-        # attributter
+        # attributter - move to dyna parser
         vp.add_listener(fp.AttributParser())
-        # employment
+        # employment - move to dyna parser
         vp.add_listener(fp.get_upload_employment_year())
         vp.add_listener(fp.get_upload_employment_quarter())
         vp.add_listener(fp.get_upload_employment_month())
@@ -152,9 +153,9 @@ class VirksomhedParserFactory(object):
 
         # Direct Inserts
         virksomhedsform = ('virksomhedsform', 'virksomhedsformkode', 'virksomhedsform')
-        hovedbranche = ('hovedbranche', 'branchekode','hovedbranche')
+        hovedbranche = ('hovedbranche', 'branchekode', 'hovedbranche')
         bibranche1 = ('bibranche1', 'branchekode', 'bibranche1')
-        bibranche2 =  ('bibranche2', 'branchekode', 'bibranche2')
+        bibranche2 = ('bibranche2', 'branchekode', 'bibranche2')
         bibranche3 = ('bibranche3', 'branchekode', 'bibranche3')
         penheder = ('penheder', 'pNummer', 'penhed')
 
@@ -181,13 +182,13 @@ class VirksomhedParserFactory(object):
         # # hjemmeside
         hjemmeside = ('hjemmeside', 'kontaktoplysning', 'hjemmeside', kontakt_mapping)
 
-        UpdateParser = fp.UploadMappedUpdates()
+        update_parser = fp.UploadMappedUpdates()
         for item in (virksomhedsform, hovedbranche, bibranche1, bibranche2, bibranche3, penheder):
-            UpdateParser.add_mapping(fp.UpdateMapping(*item))
+            update_parser.add_mapping(fp.UpdateMapping(*item))
         for item in (virksomhedsstatus, regnummer, navne, binavne, epost, tlf, fax, email, hjemmeside):
-            UpdateParser.add_mapping(fp.UpdateMapping(*item))
+            update_parser.add_mapping(fp.UpdateMapping(*item))
 
-        vp.add_listener(UpdateParser)
+        vp.add_listener(update_parser)
         vp.add_listener(parser_organisation.CompanyOrganisationParser())
         vp.add_listener(parser_organisation.SpaltningFusionParser())
 
@@ -233,7 +234,8 @@ class VirksomhedParserFactory(object):
         # # telefaxnummer
         # vp.add_listener(fp.UploadTimeMap('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping))
         # # obligatoriskkemail
-        # vp.add_listener(fp.UploadTimeMap('obligatoriskEmail', 'kontaktoplysning', 'obligatoriskemail', kontakt_mapping))
+        # vp.add_listener(fp.UploadTimeMap('obligatoriskEmail', 'kontaktoplysning',
+        # 'obligatoriskemail', kontakt_mapping))
         # # hjemmeside
         # vp.add_listener(fp.UploadTimeMap('hjemmeside', 'kontaktoplysning', 'hjemmeside', kontakt_mapping))
         # relation parser
@@ -241,4 +243,3 @@ class VirksomhedParserFactory(object):
         # # virksomhedsform
 
         return vp
-

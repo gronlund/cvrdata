@@ -431,7 +431,7 @@ class CreateDatabase(object):
                 index.create(engine)
             except Exception as e:
                 print(e)
-            
+
         # text_indexes = [(Enhedsrelation, vaerdi)]
 
     def create_text_indexes(self):

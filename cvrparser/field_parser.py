@@ -3,10 +3,11 @@ import dateutil
 import datetime
 import sys
 from dateutil.parser import parse as date_parse
-from .sql_help import SessionInsertCache
+from .sql_help import SessionInsertCache, SessionKeystoreCache
 from .adresse import beliggenhedsadresse_to_str
 from . import alchemy_tables
 from .bug_report import add_error
+import threading
 
 
 def get_date(st):
@@ -74,7 +75,7 @@ def slow_time_transform(s):
             # assert False, d
             return d.replace(tzinfo=pytz.utc)
     except Exception as e:
-        add_error('Exception utctransform: {0} {1}'.format(e, s))
+        add_error('Exception utctransform: {0} {1}'.format(e, s), -1)
         return None
 
 
@@ -100,10 +101,15 @@ class ParserInterface(object):
         raise NotImplementedError('Implement in subclass')
 
 
-class Parser(object):
-    """ Abstract class for parsing cvr data with sql_cache. """
+class Parser(ParserInterface):
+    """ Abstract class for parsing cvr data with sql_cache.
+    Change db type with keystore existing or not
+    """
     def __init__(self, table_class, columns, keystore=None):
-        self.db = SessionInsertCache(table_class, columns, keystore=keystore)
+        if keystore is None:
+            self.db = SessionInsertCache(table_class, columns)
+        else:
+            self.db = SessionKeystoreCache(table_class, columns, keystore=keystore)
 
     def insert(self, data):
         raise NotImplementedError('Implement in subclass')
@@ -113,7 +119,10 @@ class Parser(object):
 
 
 class ParserList(ParserInterface):
-    """ Simple class for storing list of parser objects """
+    """ Simple class for storing list of parser objects
+    consider parallelizing commits
+    https://further-reading.net/2017/01/quick-tutorial-python-multiprocessing/
+    """
 
     def __init__(self):
         self.listeners = []
@@ -123,8 +132,23 @@ class ParserList(ParserInterface):
             l.insert(data)
 
     def commit(self):
-        for l in self.listeners:
-            l.commit()
+        # print('Threaded commits')
+
+        def worker(list_index):
+            # print('worker', list_index)
+            self.listeners[list_index].commit()
+
+        threads = []
+        for i in range(len(self.listeners)):
+            t = threading.Thread(target=worker, args=(i,))
+            threads.append(t)
+            t.start()
+        for t in threads:
+            t.join()
+        #
+        # for l in self.listeners:
+        #     l.commit()
+        #
 
     def add_listener(self, obj):
         self.listeners.append(obj)
@@ -170,55 +194,12 @@ class UploadData(Parser):
                 self.db.insert((ukey, hb))
 
 
-class UploadTimeMap(Parser):
-    """ Class for uploading time period data from data that must be mapped to a predefined key """
-
-    def __init__(self, json_field, key, field_type, field_map):
-        """
-
-        :param json_field: field to extract data from (from dict root)
-        :param key: id of data field to extract
-        :param field_type: database enum type of data to insert (see create_cvr_tables)
-        :param field_map: dict, map data to something else
-        """
-        assert False, 'Deprecated'
-        table = alchemy_tables.Update
-        columns = [table.enhedsnummer,
-                   table.felttype,
-                   table.kode,
-                   table.gyldigfra,
-                   table.gyldigtil,
-                   table.sidstopdateret]
-        super().__init__(table, columns, keystore=None)
-        self.json_field = json_field
-        self.key = key
-        self.field_map = field_map
-        self.field_type = field_type
-
-    def insert(self, data):
-        assert False
-        enh = data['enhedsNummer']
-        upload = []
-        for z in data[self.json_field]:
-            val = z[self.key]
-            if val is None:
-                continue
-            dat = self.field_map[val]
-            tfrom, tto, utc_sidst_opdateret = get_date(z)
-            tup = (enh, self.field_type, dat, tfrom, tto, utc_sidst_opdateret)
-            upload.append(tup)
-        # remove duplicates
-        for x in set(upload):
-            self.db.insert(x)
-        # self.db.insert(x) for x in set(upload)
-
-
 class IdentityDict(object):
     def __getitem__(self, item):
         return item
 
 
-class UpdateMapping():
+class UpdateMapping(object):
 
     def __init__(self, json_field, key, field_type, field_map=None):
         """
@@ -242,9 +223,7 @@ class UpdateMapping():
 class UploadMappedUpdates(Parser):
 
     def __init__(self):
-        """
-
-        :param map_list: list, Updatemappiong
+        """ Class for uploading data to cvr updates table
         """
         self.updatemap_list = []
         table = alchemy_tables.Update
@@ -279,14 +258,6 @@ class UploadMappedUpdates(Parser):
             # remove duplicates
         for x in set(upload):
             self.db.insert(x)
-
-
-class UploadTimeDirect(UploadTimeMap):
-    """ Class for directly uploading data values"""
-
-    def __init__(self, json_field, key, field_type):
-        assert False, 'Deprecated'
-        super().__init__(json_field, key, field_type, IdentityDict())
 
 
 class UploadLivsforloeb(Parser):

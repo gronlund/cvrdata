@@ -35,7 +35,6 @@ class MakeCvrDatabase(object):
     def download_dawa():
         """ Download newst dawa file """
         print('Download newest dawa data')
-
         filename = os.path.join(config['data_path'], 'dawa.csv')
         url = 'https://dawa.aws.dk/adresser?format=csv'
         r = requests.get(url, stream=True)

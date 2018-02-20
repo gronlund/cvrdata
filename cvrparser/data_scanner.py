@@ -6,21 +6,21 @@ from . import field_parser as field_parser
 from . import adresse
 from . import alchemy_tables
 from . import Session
-
+import logging
 
 def insert_values(dicts, parser):
     """ Parse Cvr Values from cvr dictionaries
 
     Args:
     -----
-    @param dicts: list, lists of cvr data dicts
-    @param parser: parser, that extracts the data
+    :param dicts: list, lists of cvr data dicts
+    :param parser: parser, that extracts the data
     """
 
     for j, d in enumerate(dicts):
         parser.insert(d)
-        if ((j+1) % 1000) == 0:
-            print('{0} objects parsed'.format(j))
+        # if ((j+1) % 1001) == 0:
+        #     print('{0} objects parsed'.format(j))
     parser.commit()
 
 
@@ -80,16 +80,19 @@ class Mapping(object):
         self.keycol = keycol
         self.keylen = keylen
 
-    def update(self):
-        """ Update the keys of all the unmapped values if possible
-        sessionnize this
+    def update(self, session=None):
+        """ Update the keys of all the unmapped values
+        fix problem with sql_help that only checks for membership then inserts but does not update this
+        the return value should have the update keys
 
-        :returns
-            missing, set of elements still not mapped
+        :param session, sqlalchemy session
+        :returns missing, set of elements still not mapped
         """
+        # logging.info('update keystore len: {0}\n{1}'.format(len(self.unmapped), list(self.unmapped)[0:2]))
         missing = set()
         if len(self.unmapped) > 0:
-            session = Session()
+            if session is None:
+                session = Session()
             if self.keylen == 1:
                 query = session.query(self.keycol, self.val).filter(self.keycol.in_(self.unmapped))
             else:
@@ -171,7 +174,6 @@ class DataParser(object):
     """ Wrapper class for data parsers to store cache between uses"""
     def __init__(self, _type):
         """
-
         :param _type: str, cvr object type
         """
         self.keystore = KeyStore()

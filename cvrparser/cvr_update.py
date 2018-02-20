@@ -95,7 +95,10 @@ def run_delete_test(cvr):
     penhed = [4002535375, 4002241948, 4002211395]
     cvr.delete(penhed, cvr.penhed_type)
         
-
+def data_test(ecvr):
+    enh = 743
+    print('update enh', 743)
+    ecvr.update_units([enh])
 
 
 if __name__ == '__main__':

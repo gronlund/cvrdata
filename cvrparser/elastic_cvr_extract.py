@@ -7,6 +7,7 @@ import os
 import pytz
 import tqdm
 import logging
+import threading
 from .field_parser import utc_transform
 from . import config, create_session
 from . import alchemy_tables
@@ -14,6 +15,40 @@ from .bug_report import add_error
 from . import data_scanner
 from .cvr_download import download_all_dicts_to_file
 
+# from multiprocessing import Process, Queue, Lock
+#
+#
+# # Producer function that places data on the Queue
+# def producer(queue, lock, names):
+#     # Synchronize access to the console
+#     with lock:
+#         print('Starting producer => {}'.format(os.getpid()))
+#
+#     # Place our names on the Queue
+#     for name in names:
+#         queue.put(name)
+#
+#     # Synchronize access to the console
+#     with lock:
+#         print('Producer {} exiting...'.format(os.getpid()))
+#
+#
+# # The consumer function takes data off of the Queue
+# def consumer(queue, lock):
+#     # Synchronize access to the console
+#     with lock:
+#         print('Starting consumer => {}'.format(os.getpid()))
+#
+#     # Run indefinitely
+#     while True:
+#
+#         # If the queue is empty, queue.get() will block until the queue has data
+#         name = queue.get()
+#
+#         # Synchronize access to the console
+#         with lock:
+#             print('{} got {}'.format(os.getpid(), name))
+#
 
 class CvrConnection(object):
     """ Class for connecting and retrieving data from danish CVR register """
@@ -23,6 +58,10 @@ class CvrConnection(object):
         consider moving elastic search connection into __init__
         currently inserts 300-400 units per second to database.
         So insert of all will take around 5-6 hours.
+
+        Add treading/parallelism so we insert while we scan for updates.
+        Seems downloading is really slow.
+
 
 
         Args:
@@ -38,7 +77,7 @@ class CvrConnection(object):
         user = config['cvr_user']
         password = config['cvr_passwd']
         self.datapath = config['data_path']
-        self.update_batch_size = 512
+        self.update_batch_size = 2048
         self.source_keymap = {'virksomhed': 'Vrvirksomhed',
                               'deltager': 'Vrdeltagerperson',
                               'produktionsenhed': 'VrproduktionsEnhed'}
@@ -61,6 +100,7 @@ class CvrConnection(object):
                                             month=1,
                                             day=1,
                                             tzinfo=pytz.utc)
+        self.data_file = os.path.join(self.datapath, 'cvr_all.json')
 
     def search_field_val(self, field, value, size=10):
         search = Search(using=self.elastic_client, index=self.index)
@@ -114,9 +154,12 @@ class CvrConnection(object):
         return hits
 
     def update_all(self, resume_cvr_all=False):
-        """Update CVR Company Data
+        """
+        Update CVR Company Data
         download updates
         perform updates
+
+        rewrite to producer consumer.
         """
         session = create_session()
         ud_table = alchemy_tables.Update
@@ -124,7 +167,7 @@ class CvrConnection(object):
         session.close()
         old_file_used = False
         if res is None or resume_cvr_all:
-            filename = os.path.join(self.datapath, 'cvr_all.json')
+            filename = self.data_file
             if os.path.exists(filename):
                 print('Old file {0} found - using it'.format(filename))
                 old_file_used = True
@@ -163,7 +206,7 @@ class CvrConnection(object):
             os.remove(filename)
         print('Download updates to file name: {0}'.format(filename))
         params = {'scroll': self.elastic_search_scroll_time, 'size': self.elastic_search_scan_size}
-        for _type in self.source_keymap.values():
+        for (cvr_type, _type) in self.source_keymap.items():
             print('Downloading Type {0}'.format(_type))
             search = Search(using=self.elastic_client, index=self.index)
             if len(update_info[_type]['units']) < self.max_download_size:
@@ -175,6 +218,9 @@ class CvrConnection(object):
                 search = search.query('range',
                                       **{'{0}.sidstOpdateret'.format(_type):
                                       {'gte': update_info[_type]['sidstopdateret']}})
+                # search = search.query('match', _type=cvr_type)
+                # search = search.query('match',
+
             search = search.params(**params)
             download_all_dicts_to_file(filename, search, mode='a')
             print('{0} handled:'.format(_type))
@@ -217,7 +263,8 @@ class CvrConnection(object):
             raise e
         # print('Update Done!')
 
-    def delete(self, enh, _type):
+    @staticmethod
+    def delete(enh, _type):
         """ Delete data from given entities
         
         Args:
@@ -225,7 +272,7 @@ class CvrConnection(object):
         enh: list of company ids (enhedsnummer)
         _type: object type to delete
         """
-        # print('Deleting: ', enh)
+        # logging.info('Start delete')
         delete_table_models = [alchemy_tables.Update,
                                alchemy_tables.Adresseupdate,
                                alchemy_tables.Attributter,
@@ -244,23 +291,52 @@ class CvrConnection(object):
             print('bad _type: ', _type)
             raise Exception('bad _type')
         delete_table_models.append(static_table)
-        # statements = [t.delete().where(t.c.enhedsnummer.in_(enh)) for t in delete_tables]
-        session = create_session()
-        try:
-            for table_model in delete_table_models:
-                session.query(table_model).filter(table_model.enhedsnummer.in_(enh)).delete(synchronize_session=False)
-            if _type == 'Vrvirksomhed':
-                session.query(alchemy_tables.Enhedsrelation).\
-                    filter(alchemy_tables.Enhedsrelation.enhedsnummer_virksomhed.in_(enh)).\
-                    delete(synchronize_session=False)
+        #  delete independently from several tables. Lets thread them
+        def worker(i):
+            session = create_session()
+            table_class = delete_table_models[i]
+            # print('delete', table_class)
+            session.query(table_class).filter(table_class.enhedsnummer.in_(enh)).delete(synchronize_session=False)
             session.commit()
-        except Exception as e:
-            print('Delete Exception:', enh)
-            print(e)
-            session.rollback()
             session.close()
-            raise
-        session.close()
+
+        def enh_worker():
+            session = create_session()
+            session.query(alchemy_tables.Enhedsrelation). \
+                filter(alchemy_tables.Enhedsrelation.enhedsnummer_virksomhed.in_(enh)). \
+                delete(synchronize_session=False)
+            session.commit()
+            session.close()
+
+        threads = []
+        if _type == 'Vrvirksomhed':
+            t = threading.Thread(target=enh_worker)
+            threads.append(t)
+            t.start()
+        for i in range(len(delete_table_models)):
+            t = threading.Thread(target=worker, args=(i,))
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
+
+        # session = create_session()
+        # try:
+        #     for table_model in delete_table_models:
+        #         session.query(table_model).filter(table_model.enhedsnummer.in_(enh)).delete(synchronize_session=False)
+        #     if _type == 'Vrvirksomhed':
+        #         session.query(alchemy_tables.Enhedsrelation).\
+        #             filter(alchemy_tables.Enhedsrelation.enhedsnummer_virksomhed.in_(enh)).\
+        #             delete(synchronize_session=False)
+        #     session.commit()
+        # except Exception as e:
+        #     print('Delete Exception:', enh)
+        #     print(e)
+        #     session.rollback()
+        #     session.close()
+        #     raise
+        # session.close()
 
     def insert(self, dicts, enh_type):
         """ Insert data from dicts
@@ -269,19 +345,23 @@ class CvrConnection(object):
         :param dicts: list of dicts with cvr data (Danish Business Authority)
         :param enh_type: cvr object type
         """
+        # logging.info('start insert')
         data_parser = data_scanner.DataParser(_type=enh_type)
         address_parser = self.address_parser_factory.create_parser(self.update_address)
         data_parser.parse_data(dicts)
+        # logging.info('fixed valued parsed')
         # print('value data inserted - start dynamic ')
         data_parser.parse_dynamic_data(dicts)
         # print('dynamic data inserted')
         address_parser.parse_address_data(dicts)
         # print('address data inserted/skipped - start static')
         data_parser.parse_static_data(dicts)
-        # printa('static parsed')
+        # print('static parsed')
 
     def make_samtid_table(self):
-        """ Make mapping from entity id to current version """
+        """ Make mapping from entity id to current version
+        Add threading to run in parallel to see if that increase speed.
+        """
         print('Make id -> samtId map: units update status map')
         table_models = [alchemy_tables.Virksomhed, alchemy_tables.Produktion, alchemy_tables.Person]
         enh_samtid_map = defaultdict()

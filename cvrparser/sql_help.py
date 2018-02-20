@@ -3,7 +3,9 @@ from . import create_session
 
 
 class MyCache(object):
-
+    """ Change to use async inserts perhaps - that would be neat
+    https://further-reading.net/2017/01/quick-tutorial-python-multiprocessing/
+    """
     def insert(self, val):
         raise NotImplementedError('Overwrite me please')
 
@@ -13,7 +15,7 @@ class MyCache(object):
 
 class SessionCache(MyCache):
 
-    def __init__(self, table_class, columns, batch_size=2000):
+    def __init__(self, table_class, columns, batch_size=10000):
         self.columns = columns
         self.fields = [x.name for x in columns]
         self.cache = []
@@ -23,38 +25,56 @@ class SessionCache(MyCache):
     def insert(self, val):
         # assert type(val) is tuple
         self.cache.append(val)
-        if len(self.cache) >= self.batch_size:
-            self.commit()
+        # if len(self.cache) >= self.batch_size:
+        #     self.commit()
 
 
 class SessionInsertCache(SessionCache):
-    """ Make new Cache on with keystore one without"""
+    """ Make new Cache on with keystore one without
+       Wrap session around keystore.update
+    """
 
-    def __init__(self, table_class, columns, keystore=None, batch_size=2000):
+    def __init__(self, table_class, columns,  batch_size=10000):
         super().__init__(table_class, columns, batch_size)
-        self.keystore = keystore
-
-    def to_dicts(self):
-        """ Make data into dicts for bulk insert,
-        only insert elements that are missing from database
-        """
-        if self.keystore is not None:
-            missing = self.keystore.update()
-            z = [{x: y for (x, y) in zip(self.fields, c)} for (key, c) in self.cache if key in missing]
-        else:
-            z = [{x: y for (x, y) in zip(self.fields, c)} for c in self.cache]
-            # z = [{x: y for (x, y) in zip(self.fields, c)} for (key, c) in self.cache]
-        return z
 
     def commit(self):
-        z = self.to_dicts()
+        z = [{x: y for (x, y) in zip(self.fields, c)} for c in self.cache]
         # objs = [self.table_class(**d) for d in z]
         # self.session.add_all(objs)
+        # t0 = time.time()
         session = create_session()
         session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
         session.commit()
         session.close()
+        # t1 = time.time()
+        # total = t1 - t0
+        # print('time', self.table_class, total)
         self.cache = []
+
+
+class SessionKeystoreCache(SessionCache):
+    def __init__(self, table_class, columns, keystore, batch_size=10000):
+        super().__init__(table_class, columns, batch_size)
+        self.keystore = keystore
+
+    def commit(self):
+        session = create_session()
+        # does not update the keystore which may be a problem
+        missing = self.keystore.update(session)
+        z = [{x: y for (x, y) in zip(self.fields, c)} for (key, c) in self.cache if key in missing]
+        # t0 = time.time()
+        session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
+        session.commit()
+        session.close()
+        # t1 = time.time()
+        # total = t1 - t0
+        # print('time', self.table_class, total)
+        self.cache = []
+
+    # def to_dicts(self):
+    #     """ Make data into dicts for bulk insert,
+    #     only insert elements that are missing from database
+    #     """
 
 
 class SessionUpdateCache(SessionCache):
@@ -64,7 +84,7 @@ class SessionUpdateCache(SessionCache):
         where data should not include the key
     """
 
-    def __init__(self, table_class, key_columns, data_columns, batch_size=2000):
+    def __init__(self, table_class, key_columns, data_columns, batch_size=10000):
         super().__init__(table_class, key_columns+data_columns, batch_size)
         self.key_columns = key_columns
         self.data_columns = data_columns
