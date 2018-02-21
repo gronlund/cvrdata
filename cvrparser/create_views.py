@@ -41,6 +41,7 @@ def create_view(name, select_stmt, db):
 def create_views():
     """ create all defined views  """
     db = alchemy_tables.DBModel()
+    create_person_name_view(db)
     create_branche_view(db)
     create_virk_production_view(db)
     create_virksomhedsform_view(db)
@@ -174,7 +175,8 @@ def create_virk_name_view(db):
     upd = alchemy_tables.Update
     vs = alchemy_tables.Virksomhed
     navn = alchemy_tables.Navne
-    query = select([upd.enhedsnummer, vs.cvrnummer,
+    query = select([upd.enhedsnummer,
+                    vs.cvrnummer,
                     upd.kode.label('navnid'),
                     navn.navn,
                     upd.gyldigfra,
@@ -202,3 +204,18 @@ def create_virk_kredit_status_view(db):
         where(stat.statusid==upd.kode)
     create_view('virk_status', query, db)
 
+
+def create_person_name_view(db):
+    view_name = 'pers_navne'
+    upd = alchemy_tables.Update
+    vs = alchemy_tables.Person
+    navn = alchemy_tables.Navne
+    query = select([upd.enhedsnummer,
+                    upd.kode.label('navnid'),
+                    navn.navn,
+                    upd.gyldigfra,
+                    upd.gyldigtil, upd.sidstopdateret]).\
+        where(upd.enhedsnummer == vs.enhedsnummer).\
+        where(upd.felttype == 'navn').\
+        where(upd.kode==navn.navnid)
+    create_view(view_name, query, db)
