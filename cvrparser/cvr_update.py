@@ -129,8 +129,9 @@ if __name__ == '__main__':
     parser.add_argument('-log', default=False, dest='logging', help='enable logging', action='store_true')
     parser.add_argument('-resume', default=False, dest='resume',
                         help='resume cvr update - mainly for debugging restart', action='store_true')
-    parser.add_argument('-time', default=False, dest='time',
-                        help='time test', action='store_true')
+    parser.add_argument('-time', default=None, dest='time',
+                        help='time test with file')
+
 
     logging.basicConfig(level=logging.INFO)
     args = parser.parse_args()
@@ -176,7 +177,9 @@ if __name__ == '__main__':
     if args.time:
         pr = cProfile.Profile()
         pr.enable()
-        cvr.update_from_mixed_file('/Users/jallan/tmp/cvr_10k.json', force=True)
+        filename = args.time
+        print('testing with file', filename)
+        cvr.update_from_mixed_file(filename, force=True)
         # cvr.update_from_mixed_file('/Users/jallan/tmp/cvr_update.json', force=True)
         pr.disable()
         s = io.StringIO()
