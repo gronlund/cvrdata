@@ -31,6 +31,13 @@ def visit_create_view(element, compiler):
 
 
 def create_view(name, select_stmt, db):
+    """ create a view
+
+    :param name: str,
+    :param select_stmt: sqlalchemy query
+    :param db: dbmodel
+    :return:
+    """
     if name in db.tables_dict.keys():
         print('{0} exists'.format(name))
         return
@@ -43,10 +50,12 @@ def create_views():
     db = alchemy_tables.DBModel()
     create_person_name_view(db)
     create_branche_view(db)
+    create_bibranche_view(db)
     create_virk_production_view(db)
     create_virksomhedsform_view(db)
     create_virk_status_view(db)
     create_virk_kredit_status_view(db)
+    create_virk_name_view(db)
     create_relation_view(db)
     db = alchemy_tables.DBModel()
     create_board_view(db)
@@ -69,6 +78,48 @@ def create_branche_view(db):
         where(branche.branchekode == upd.kode).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype == 'hovedbranche')
+    create_view(view_name, virk_branche_query, db)
+
+
+def create_bibranche_view(db):
+    """ Create view of main industri code """
+    view_name = 'virk_branche'
+    branche = alchemy_tables.Branche
+    upd = alchemy_tables.Update
+    vs = alchemy_tables.Virksomhed
+    virk_branche_query = select([upd.enhedsnummer,
+                                 vs.cvrnummer,
+                                 upd.felttype,
+                                 upd.kode.label('branchekode'),
+                                 branche.branchetekst,
+                                 upd.gyldigfra, upd.gyldigtil,
+                                 upd.sidstopdateret]).\
+        where(branche.branchekode == upd.kode).\
+        where(upd.enhedsnummer == vs.enhedsnummer).\
+        where(upd.felttype.in_(['hovedbranche, bibranche1', 'bibranche2', 'bibranche3']))
+    create_view(view_name, virk_branche_query, db)
+
+
+def create_virk_kontakt_view(db):
+    """ Create view of main industri code """
+    view_name = 'virk_kontaktinfo'
+    kontakt = alchemy_tables.Kontaktinfo
+    upd = alchemy_tables.Update
+    vs = alchemy_tables.Virksomhed
+    virk_branche_query = select([upd.enhedsnummer,
+                                 vs.cvrnummer,
+                                 upd.felttype,
+                                 upd.kode.label('branchekode'),
+                                 kontakt.kontaktoplysning,
+                                 upd.gyldigfra, upd.gyldigtil,
+                                 upd.sidstopdateret]).\
+        where(kontakt.oplysningid == upd.kode).\
+        where(upd.enhedsnummer == vs.enhedsnummer).\
+        where(upd.felttype.in_(['elektroniskpost',
+                               'hjemmeside',
+                               'obligatoriskemail',
+                               'telefaxnummer',
+                               'telefonnummer']))
     create_view(view_name, virk_branche_query, db)
 
 
@@ -177,6 +228,7 @@ def create_virk_name_view(db):
     navn = alchemy_tables.Navne
     query = select([upd.enhedsnummer,
                     vs.cvrnummer,
+                    upd.felttype,
                     upd.kode.label('navnid'),
                     navn.navn,
                     upd.gyldigfra,
