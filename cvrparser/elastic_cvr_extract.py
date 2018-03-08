@@ -400,14 +400,14 @@ class CvrConnection(object):
                 keys = raw_dat.keys()
                 dict_type_set = keys & self.source_keymap.values()  # intersects the two key sets
                 if len(dict_type_set) != 1:
-                    add_error('BAD DICT DOWNLOADED', raw_dat)
+                    add_error('BAD DICT DOWNLOADED {0}'.format(raw_dat))
                     continue
                 dict_type = dict_type_set.pop()
                 dat = raw_dat[dict_type]
                 enhedsnummer = dat['enhedsNummer']
                 samtid = dat['samtId']
                 if dat['samtId'] is None:
-                    add_error('Samtid none.', enhedsnummer)
+                    add_error('Samtid none. '.format(enhedsnummer))
                     dat['samtId'] = -1
                     samtid = -1
                 current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
@@ -576,12 +576,8 @@ def cvr_update_producer(queue, lock):
     cvr = CvrConnection()
     enh_samtid_map = CvrConnection.make_samtid_dict()
     dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=CvrConnection.dummy_date)
-
     params = {'scroll': cvr.elastic_search_scroll_time, 'size': cvr.elastic_search_scan_size}
-    search = Search(using=cvr.elastic_client, index=cvr.index)
-    search = search.query('match_all')
-    search = search.params(**params)
-
+    search = Search(using=cvr.elastic_client, index=cvr.index).query('match_all').params(**params)
     generator = search.scan()
     for i, obj in enumerate(generator):
         try:
@@ -589,15 +585,14 @@ def cvr_update_producer(queue, lock):
             keys = dat.keys()
             dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
             if len(dict_type_set) != 1:
-                add_error('BAD DICT DOWNLOADED', dat)
+                add_error('BAD DICT DOWNLOADED \n{0}'.format(dat))
                 continue
             dict_type = dict_type_set.pop()
             dat = dat[dict_type]
-
             enhedsnummer = dat['enhedsNummer']
             samtid = dat['samtId']
             if dat['samtId'] is None:
-                add_error('Samtid none.', enhedsnummer)
+                add_error('Samtid none: enh {0}'.format(enhedsnummer))
                 dat['samtId'] = -1
                 samtid = -1
             current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
