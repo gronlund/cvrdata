@@ -131,7 +131,8 @@ if __name__ == '__main__':
                         help='resume cvr update - mainly for debugging restart', action='store_true')
     parser.add_argument('-time', default=None, dest='time',
                         help='time test with file')
-
+    parser.add_argument('-threading', default=False, dest='threading',
+                        action='store_true')
 
     logging.basicConfig(level=logging.INFO)
     args = parser.parse_args()
@@ -146,8 +147,8 @@ if __name__ == '__main__':
     #     fill_employment(dbmodel, config['employmentpath'])
 
 
-    if args.logging:
-        logging.basicConfig(level=logging.DEBUG)
+    # if args.logging:
+    #     logging.basicConfig(level=logging.DEBUG)
 
     if args.db is not None:
         setup_args['db'] = args.db
@@ -188,3 +189,13 @@ if __name__ == '__main__':
         ps.print_stats()
         print(s.getvalue())
         print('something')
+    if args.threading:
+        import time
+        t0 = time.time()
+        #a = cvr.get_update_list()
+        t1 = time.time()
+        b = cvr.get_update_lists_threaded()
+        t2 = time.time()
+        #print('non-threaded', t1-t0, 'threaded', t2-t1)
+        print('threaded', t2-t1)
+        # assert a == b, 'dicts differ, hmmm am i just late'

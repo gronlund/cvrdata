@@ -71,11 +71,11 @@ def slow_time_transform(s):
         if d.utcoffset() is not None:
             return d.astimezone(pytz.utc)
         else:
-            add_error('naive date given - do not do that!!! - i will assume it is utc time anyways', -1)
+            add_error('naive date given - do not do that!!! - i will assume it is utc time anyways: {0}'.format(s))
             # assert False, d
             return d.replace(tzinfo=pytz.utc)
     except Exception as e:
-        add_error('Exception utctransform: {0} {1}'.format(e, s), -1)
+        add_error('Exception utctransform: {0} {1}'.format(e, s))
         return None
 
 
@@ -88,7 +88,7 @@ def utc_transform(s):
     try:
         return fast_time_transform(s)
     except Exception as e:
-        print('fast transform error: ', e, s, file=sys.stderr)
+        add_error('fast transform error: {0} - {1}'.format(s, e))
     return slow_time_transform(s)
 
 
@@ -120,8 +120,7 @@ class Parser(ParserInterface):
 
 class ParserList(ParserInterface):
     """ Simple class for storing list of parser objects
-    consider parallelizing commits
-    https://further-reading.net/2017/01/quick-tutorial-python-multiprocessing/
+    using threading for commits. Consider bounding thread count. May not matter.
     """
 
     def __init__(self):
@@ -145,10 +144,10 @@ class ParserList(ParserInterface):
             t.start()
         for t in threads:
             t.join()
-        #
+
         # for l in self.listeners:
         #     l.commit()
-        #
+
 
     def add_listener(self, obj):
         self.listeners.append(obj)

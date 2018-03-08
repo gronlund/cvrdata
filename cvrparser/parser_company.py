@@ -51,8 +51,7 @@ class StatusKoderMap(fp.Parser):
         for z in data['status']:
             val = (z['statuskode'], z['kreditoplysningkode'])
             if val[0] is None or val[1] is None:
-                print('what the fuck', val)
-                add_error('Statuskode', data)
+                add_error('Statuskode - bad statuskode: {0}'.format(enh))
                 continue
             dat = self.field_map[val]
             tfrom, tto, utc_sidstopdaret = fp.get_date(z)
@@ -189,7 +188,9 @@ class VirksomhedParserFactory(object):
             update_parser.add_mapping(fp.UpdateMapping(*item))
 
         vp.add_listener(update_parser)
+        # navne_parser = parser_organisation.OrganisationNavnParser()
         vp.add_listener(parser_organisation.CompanyOrganisationParser())
+        vp.add_listener(parser_organisation.CompanyOrganisationMemberParser())
         vp.add_listener(parser_organisation.SpaltningFusionParser())
 
         # produktionsenheder

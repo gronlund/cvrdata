@@ -41,9 +41,7 @@ def spalt_parser(dat):
         spalt = dat['spaltninger']
         for s in spalt:
             if len(s['organisationsNavn']) != 1:
-                print('more org navn')
-                add_error('more org name', -1)
-                pdb.set_trace()
+                add_error('More Org Names: {0}',format(dat))
             parse_udggaende(s, 'Spaltning')
 
 
@@ -73,14 +71,12 @@ class SpaltFusionIndUdParser(Parser):
                     tfrom, tto, utc_sidstopdateret = get_date(val)
                     dat = (enhedsnummer, org['enhedsNummerOrganisation'], val['vaerdi'].lower(),
                            'indgaaende', tfrom, tto, utc_sidstopdateret)
-                    # self.db.insert(dat)
                     updates.append(dat)
             for ud in org['udgaaende']:
                 for val in ud['vaerdier']:
                     tfrom, tto, utc_sidstopdateret = get_date(val)
                     dat = (enhedsnummer, org['enhedsNummerOrganisation'], val['vaerdi'].lower(),
                            'udgaaende', tfrom, tto, utc_sidstopdateret)
-                    # self.db.insert(dat)
                     updates.append(dat)
         updates = list(set(updates))
         for update in updates:
@@ -90,8 +86,6 @@ class SpaltFusionIndUdParser(Parser):
 class SpaltningFusionParser(ParserInterface):
     """ Class for handling Spaltnig and Fusion"""
     def __init__(self):
-        # self.static_parser = OrganisationStaticParser()
-        self.name_parser = OrganisationNavnParser()
         self.indud_parser = SpaltFusionIndUdParser()
 
     def insert(self, dat):
@@ -104,16 +98,12 @@ class SpaltningFusionParser(ParserInterface):
         enhedsnummer_virksomhed = dat['enhedsNummer']
         spaltninger = dat['spaltninger']
         if len(spaltninger) > 0:
-            self.name_parser.insert(spaltninger, 'spaltning')
             self.indud_parser.insert(spaltninger, enhedsnummer_virksomhed)
         fusioner = dat['fusioner']
         if len(fusioner) > 0:
-            self.name_parser.insert(fusioner, 'fusion')
             self.indud_parser.insert(fusioner, enhedsnummer_virksomhed)
 
     def commit(self):
-        # self.static_parser.commit()
-        self.name_parser.commit()
         self.indud_parser.commit()
 
 
@@ -124,25 +114,25 @@ class CompanyOrganisationParser(ParserInterface):
      'organisationer': [{...}]
     """
     def __init__(self):
-        self.org_parser = OrganisationParser()
-        self.member_parser = CompanyOrganisationMemberParser()
+        self.name_parser = OrganisationNavnParser()
 
     def insert(self, dat):
         """ insert organisation cvr data into database
 
         :param dat: dict with cvr data
         """
-        if 'deltagerRelation' not in dat:
-            # print('no deltager relation field - enhedsnummer:, enhedstype: ', dat['enhedsNummer'], dat['enhedstype'])
-            # add_error('no deltager relation field {0}'.format(dat['enhedstype']), dat['enhedsNummer'])
-            return
-        relations = dat['deltagerRelation']
-        self.org_parser.insert(relations)
-        self.member_parser.insert(dat)
+        if 'deltagerRelation' in dat:
+            relations = dat['deltagerRelation']
+            for relation in relations:
+                organisationer = relation['organisationer']
+                self.name_parser.insert(organisationer)
+        if ('spaltninger' in dat) and (len(dat['spaltninger']) > 0):
+            self.name_parser.insert(dat['spaltninger'], 'spaltning')
+        if 'fusioner' in dat and (len(['fusioner']) > 0):
+            self.name_parser.insert(dat['fusioner'], 'fusion')
 
     def commit(self):
-        self.org_parser.commit()
-        self.member_parser.commit()
+        self.name_parser.commit()
 
 
 class PersonOrganisationParser(ParserInterface):
@@ -165,37 +155,6 @@ class PersonOrganisationParser(ParserInterface):
         self.member_parser.commit()
 
 
-class OrganisationParser(ParserInterface):
-    """
-    Consists of four parsers
-    Parse static info: fields enhedsnummerOrganisation, hovedtype
-    Parse name (navn which maybe kind of organisation, i.e. board. Currently in its own table, may move to attributes
-    Parse Attributtes: -  
-    parse memberData (the connection beween a company and another entity company or person)    
-    members are parsed by special classes
-    """
-    def __init__(self):
-        # self.static_parser = OrganisationStaticParser()
-        self.name_parser = OrganisationNavnParser()
-        # self.attribute_parser = OrganisationAttributParser()
-        self.relation_keys = {'virksomhed', 'organisationer', 'deltager', 'kontorsteder'}
-
-    def insert(self, relations):
-        # relations = person['virksomhedSummariskRelation']
-        for relation in relations:
-            if not set(relation.keys()).issubset(self.relation_keys):
-                print('relation keys wrong: ', relation.keys())
-                pdb.set_trace()
-            organisationer = relation['organisationer']
-            # self.static_parser.insert(organisationer)
-            self.name_parser.insert(organisationer)
-            # self.attribute_parser.insert(organisationer)
-
-    def commit(self):
-        # self.static_parser.commit()
-        self.name_parser.commit()
-        # self.attribute_parser.commit()
-        # self.member_parser.commit()
 
 
 class OrganisationNavnParser(ParserInterface):
@@ -205,16 +164,19 @@ class OrganisationNavnParser(ParserInterface):
      'gyldigTil': None},
      'sidstOpdateret': '2015-02-10T00:00:00.000+01:00'}]}]    
     """
-    def __init__(self, key_store=set()):
+    def __init__(self):
         """ Table should be OrganisationNavn"""
         table = alchemy_tables.Organisation
         data_columns = [table.gyldigfra, table.gyldigtil, table.sidstopdateret]
         key_columns = [table.enhedsnummer, table.hovedtype, table.navn]
         self.db = SessionUpdateCache(table_class=table, data_columns=data_columns, key_columns=key_columns)
-        self.key_store = key_store
+        self.key_store = set()
 
     def insert(self, organisationer, value='MISSING_HOVEDTYPE'):
         for org in organisationer:
+            # if 'enhedsNummerOrganisation' not in org:
+            #     import pdb
+            #     pdb.set_trace()
             enhedsnummer_org = org['enhedsNummerOrganisation']
             hovedtype = org['hovedtype'] if 'hovedtype' in org else value
             for navn in org['organisationsNavn']:
@@ -223,9 +185,6 @@ class OrganisationNavnParser(ParserInterface):
                     continue
                 self.key_store.add(key)
                 tfrom, tto, utc_sidstopdateret = get_date(navn)
-                # (navn['periode']['gyldigFra'], navn['periode']['gyldigTil'])
-                # info = (enhedsnummer_org, hovedtype, navn['navn'], navn['periode']['gyldigFra'],
-                #         navn['periode']['gyldigTil'])
                 self.db.insert((key, (tfrom, tto, utc_sidstopdateret)))
 
     def commit(self):
@@ -302,9 +261,6 @@ class OrganisationMemberParser(ParserInterface):
                         tfrom, tto, utc_sidstopdateret = get_date(vaerdi)
                         key_tuple = tuple_head + (k, membertype, vaerdi['vaerdi'], tfrom)
                         data_tuple = (tto, utc_sidstopdateret)
-                        # print('data, key', key_tuple, data_tuple)
-                        # self.db.insert((key_tuple, data_tuple))
-                        # inserts.append((key_tuple, data_tuple))
                         inserts.append(key_tuple + data_tuple)
             for ins in set(inserts):
                 self.db.insert(ins)
@@ -325,12 +281,10 @@ class CompanyOrganisationMemberParser(ParserInterface):
         for relation in relations:
             deltager = relation['deltager']
             if deltager is None:
-                add_error('Deltager is None', enhedsnummer_company)
+                add_error('Deltager is None: {0}'.format(enhedsnummer_company))
                 continue
             enhedsnummer_deltager = deltager['enhedsNummer']
             # kontorsted = relation['kontorsteder']
-            # if len(kontorsted) > 0:
-            #     print('kontorsted in the house: ')
             organisationer = relation['organisationer']
             self.member_parser.insert(organisationer, enhedsnummer_company=enhedsnummer_company,
                                       enhedsnummer_deltager=enhedsnummer_deltager)
@@ -355,3 +309,36 @@ class PersonOrganisationMemberParser(ParserInterface):
 
     def commit(self):
         self.member_parser.commit()
+
+
+class OrganisationParser(ParserInterface):
+    """
+    Consists of four parsers
+    Parse static info: fields enhedsnummerOrganisation, hovedtype
+    Parse name (navn which maybe kind of organisation, i.e. board. Currently in its own table, s
+    Parse Attributtes: -
+    parse memberData (the connection beween a company and another entity company or person)
+    members are parsed by special classes
+    """
+    def __init__(self):
+        assert False, 'DEPRECATED'
+        # self.static_parser = OrganisationStaticParser()
+        self.name_parser = OrganisationNavnParser()
+        # self.attribute_parser = OrganisationAttributParser()
+        self.relation_keys = {'virksomhed', 'organisationer', 'deltager', 'kontorsteder'}
+
+    def insert(self, relations):
+        # relations = person['virksomhedSummariskRelation']
+        for relation in relations:
+            if not set(relation.keys()).issubset(self.relation_keys):
+                add_error('relation keys wrong: \n{0}'.format( relation.keys()))
+            organisationer = relation['organisationer']
+            # self.static_parser.insert(organisationer)
+            self.name_parser.insert(organisationer)
+            # self.attribute_parser.insert(organisationer)
+
+    def commit(self):
+        # self.static_parser.commit()
+        self.name_parser.commit()
+        # self.attribute_parser.commit()
+        # self.member_parser.commit()

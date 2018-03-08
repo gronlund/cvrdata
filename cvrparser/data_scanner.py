@@ -8,6 +8,7 @@ from . import alchemy_tables
 from . import Session
 import logging
 
+
 def insert_values(dicts, parser):
     """ Parse Cvr Values from cvr dictionaries
 
@@ -91,6 +92,7 @@ class Mapping(object):
         # logging.info('update keystore len: {0}\n{1}'.format(len(self.unmapped), list(self.unmapped)[0:2]))
         missing = set()
         if len(self.unmapped) > 0:
+            self.unmapped = self.unmapped
             if session is None:
                 session = Session()
             if self.keylen == 1:

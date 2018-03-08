@@ -1,6 +1,6 @@
 from elasticsearch1 import Elasticsearch
 from elasticsearch1_dsl import Search
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 import datetime
 import ujson as json
 import os
@@ -9,60 +9,62 @@ import tqdm
 import logging
 import threading
 from .field_parser import utc_transform
-from . import config, create_session
+from . import config, create_session, engine
 from . import alchemy_tables
 from .bug_report import add_error
 from . import data_scanner
 from .cvr_download import download_all_dicts_to_file
+from multiprocessing.pool import Pool
+import multiprocessing
+import time
 
-# from multiprocessing import Process, Queue, Lock
-#
-#
-# # Producer function that places data on the Queue
-# def producer(queue, lock, names):
-#     # Synchronize access to the console
-#     with lock:
-#         print('Starting producer => {}'.format(os.getpid()))
-#
-#     # Place our names on the Queue
-#     for name in names:
-#         queue.put(name)
-#
-#     # Synchronize access to the console
-#     with lock:
-#         print('Producer {} exiting...'.format(os.getpid()))
-#
-#
-# # The consumer function takes data off of the Queue
-# def consumer(queue, lock):
-#     # Synchronize access to the console
-#     with lock:
-#         print('Starting consumer => {}'.format(os.getpid()))
-#
-#     # Run indefinitely
-#     while True:
-#
-#         # If the queue is empty, queue.get() will block until the queue has data
-#         name = queue.get()
-#
-#         # Synchronize access to the console
-#         with lock:
-#             print('{} got {}'.format(os.getpid(), name))
-#
+
+def update_all_mp(workers=1):
+    multiprocessing.log_to_stderr()
+    logger = multiprocessing.get_logger()
+    logger.setLevel(logging.INFO)
+    lock = multiprocessing.Lock()
+    queue = multiprocessing.Queue()
+    # cvr_update_producer(queue, lock)
+    # cvr_update_consumer(queue, lock)
+    # assert False
+    prod = multiprocessing.Process(target=cvr_update_producer, args=(queue, lock))
+    # prod.daemon = True
+    prod.start()
+    consumers = [multiprocessing.Process(target=cvr_update_consumer, args=(queue, lock))
+                 for _ in range(workers)]
+    for c in consumers:
+        c.daemon = True
+        c.start()
+    prod.join()
+    for c in consumers:
+        c.join()
+    queue.close()
+
+
+def create_elastic_connection(url, authentication, timeout=60, max_retries=10, retry=True):
+    return Elasticsearch(url,
+                         http_auth=authentication,
+                         timeout=timeout,
+                         max_retries=max_retries,
+                         retry_on_timeout=retry)
+
 
 class CvrConnection(object):
     """ Class for connecting and retrieving data from danish CVR register """
+    dummy_date = datetime.datetime(year=1001, month=1, day=1, tzinfo=pytz.utc)
+    source_keymap = {'virksomhed': 'Vrvirksomhed',
+                     'deltager': 'Vrdeltagerperson',
+                     'produktionsenhed': 'VrproduktionsEnhed'}
+    update_info = namedtuple('update_info', ['samtid', 'sidstopdateret'])
+    cvr_sentinel = 'SENTINEL'
+
     def __init__(self, update_address=False):
         """ Setup everything needed for elasticsearch
         connection to Danish Business Authority for CVR data extraction
         consider moving elastic search connection into __init__
         currently inserts 300-400 units per second to database.
         So insert of all will take around 5-6 hours.
-
-        Add treading/parallelism so we insert while we scan for updates.
-        Seems downloading is really slow.
-
-
 
         Args:
         -----
@@ -74,26 +76,18 @@ class CvrConnection(object):
         self.company_type = 'virksomhed'
         self.penhed_type = 'produktionsenhed'
         self.person_type = 'deltager'
-        user = config['cvr_user']
-        password = config['cvr_passwd']
+        self.user = config['cvr_user']
+        self.password = config['cvr_passwd']
         self.datapath = config['data_path']
-        self.update_batch_size = 2048
-        self.source_keymap = {'virksomhed': 'Vrvirksomhed',
-                              'deltager': 'Vrdeltagerperson',
-                              'produktionsenhed': 'VrproduktionsEnhed'}
+        self.update_batch_size = 64
         self.update_address = update_address
         self.address_parser_factory = data_scanner.AddressParserFactory()
-        self.elastic_client = Elasticsearch(self.url,
-                                            http_auth=(user, password),
-                                            timeout=60,
-                                            max_retries=10,
-                                            retry_on_timeout=True)
+        # self.ElasticParams = [self.url, (self.user, self.password), 60, 10, True]
+        self.elastic_client = create_elastic_connection(self.url, (self.user, self.password))
         self.elastic_search_scan_size = 128
         self.elastic_search_scroll_time = u'10m'
         # max number of updates to download without scan scroll
         self.max_download_size = 200000
-        self.update_info = namedtuple('update_info',
-                                      ['samtid', 'sidstopdateret'])
         self.update_list = namedtuple('update_list',
                                       ['enhedsnummer', 'sidstopdateret'])
         self.dummy_date = datetime.datetime(year=1001,
@@ -153,7 +147,8 @@ class CvrConnection(object):
         hits = response.hits.hits
         return hits
 
-    def update_all(self, resume_cvr_all=False):
+    @staticmethod
+    def update_all(self):
         """
         Update CVR Company Data
         download updates
@@ -161,28 +156,19 @@ class CvrConnection(object):
 
         rewrite to producer consumer.
         """
-        session = create_session()
-        ud_table = alchemy_tables.Update
-        res = session.query(ud_table).first()
-        session.close()
-        old_file_used = False
-        if res is None or resume_cvr_all:
-            filename = self.data_file
-            if os.path.exists(filename):
-                print('Old file {0} found - using it'.format(filename))
-                old_file_used = True
-            else:
-                self.download_all_dicts(filename)
-        else:
-            update_info = self.get_update_list()
-            filename = self.download_all_dicts_from_update_info(update_info)
-        print('Start Updating Database')
-        self.update_from_mixed_file(filename)
-        if old_file_used and not resume_cvr_all:
-            print('Inserted the old files - now update to newest version, i will call myself')
-            self.update_all()
+        update_all_mp(3)
+        return
+        # assert False, 'DEPRECATED'
+        # session = create_session()
+        # ud_table = alchemy_tables.Update
+        # res = session.query(ud_table).first()
+        # session.close()
+        # if res is None:
+        #    update_all_mp(3)
+        # else:
+        #     update_since_last(3)
 
-    def download_all_dicts(self, filename):
+    def download_all_data_to_file(self, filename):
         """
         :return:
         str: filename, datetime: download time, bool: new download or use old file
@@ -193,13 +179,13 @@ class CvrConnection(object):
         search = search.params(**params)
         download_all_dicts_to_file(filename, search)
 
-    def download_all_dicts_from_update_info(self, update_info):
+    def download_all_dicts_to_file_from_update_info(self, update_info):
         """
         :param update_info:  update_info, dict with update info for each unit type
         :return:
         str: filename, datetime: download time, bool: new download or use old file
         """
-        print('Download Data Write to File')
+        print('Download Data Write to File - DEPRECATED')
         filename = os.path.join(self.datapath, 'cvr_update.json')
         if os.path.exists(filename):
             "filename exists {0} overwriting".format(filename)
@@ -217,7 +203,7 @@ class CvrConnection(object):
                 print('To many for match query... - Get a lot of stuff we do not need')
                 search = search.query('range',
                                       **{'{0}.sidstOpdateret'.format(_type):
-                                      {'gte': update_info[_type]['sidstopdateret']}})
+                                             {'gte': update_info[_type]['sidstopdateret']}})
                 # search = search.query('match', _type=cvr_type)
                 # search = search.query('match',
 
@@ -254,7 +240,7 @@ class CvrConnection(object):
             _type: string, type object to update
         """
         enh = [x['enhedsNummer'] for x in dicts]
-        self.delete(enh, _type)
+        CvrConnection.delete(enh, _type)
         try:
             self.insert(dicts, _type)
         except Exception as e:
@@ -292,10 +278,11 @@ class CvrConnection(object):
             raise Exception('bad _type')
         delete_table_models.append(static_table)
         #  delete independently from several tables. Lets thread them
-        def worker(i):
+        # maybe threadpool is faster...
+
+        def worker(work_idx):
             session = create_session()
-            table_class = delete_table_models[i]
-            # print('delete', table_class)
+            table_class = delete_table_models[work_idx]
             session.query(table_class).filter(table_class.enhedsnummer.in_(enh)).delete(synchronize_session=False)
             session.commit()
             session.close()
@@ -350,7 +337,6 @@ class CvrConnection(object):
         address_parser = self.address_parser_factory.create_parser(self.update_address)
         data_parser.parse_data(dicts)
         # logging.info('fixed valued parsed')
-        # print('value data inserted - start dynamic ')
         data_parser.parse_dynamic_data(dicts)
         # print('dynamic data inserted')
         address_parser.parse_address_data(dicts)
@@ -358,23 +344,40 @@ class CvrConnection(object):
         data_parser.parse_static_data(dicts)
         # print('static parsed')
 
-    def make_samtid_table(self):
-        """ Make mapping from entity id to current version
-        Add threading to run in parallel to see if that increase speed.
-        """
-        print('Make id -> samtId map: units update status map')
-        table_models = [alchemy_tables.Virksomhed, alchemy_tables.Produktion, alchemy_tables.Person]
-        enh_samtid_map = defaultdict()
+    @staticmethod
+    def get_samtid_dict(table):
         session = create_session()
-        for table in table_models:
-            query = session.query(table.enhedsnummer,
-                                  table.samtid,
-                                  table.sidstopdateret)
-            existing_data = [(x[0], x[1], x[2]) for x in query.all()]
-            tmp = {a: self.update_info(samtid=b, sidstopdateret=c) for (a, b, c) in existing_data}
-            enh_samtid_map.update(tmp)
+        query = session.query(table.enhedsnummer,
+                              table.samtid,
+                              table.sidstopdateret)
+        existing_data = [(x[0], x[1], x[2]) for x in query.all()]
+        tmp = {a: CvrConnection.update_info(samtid=b, sidstopdateret=c) for (a, b, c) in existing_data}
         session.close()
-        print('Id map done')
+        return tmp
+
+    @staticmethod
+    def make_samtid_dict():
+        """ Make mapping from entity id to current version
+        Add threading to run in parallel to see if that increase speed. Use threadpool instad of concurrent_future
+        """
+        logging.info('Make id -> samtId map: units update status map')
+        table_models = [alchemy_tables.Virksomhed, alchemy_tables.Produktion, alchemy_tables.Person]
+        enh_samtid_map = {}
+
+        def worker(table_idx):
+            table = table_models[table_idx]
+            tmp = CvrConnection.get_samtid_dict(table)
+            enh_samtid_map.update(tmp)
+
+        threads = []
+        for i in range(len(table_models)):
+            t = threading.Thread(target=worker, args=(i, ))
+            threads.append(t)
+            t.start()
+        for t in threads:
+            t.join()
+
+        logging.info('Id map done')
         return enh_samtid_map
 
     def update_from_mixed_file(self, filename, force=False):
@@ -388,8 +391,8 @@ class CvrConnection(object):
         if force:
             enh_samtid_map = {}
         else:
-            enh_samtid_map = self.make_samtid_table()
-        dummy = self.update_info(samtid=-1, sidstopdateret=self.dummy_date)
+            enh_samtid_map = self.make_samtid_dict()
+        dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=self.dummy_date)
         dicts = {x: list() for x in self.source_keymap.values()}
         with open(filename) as f:
             for line in tqdm.tqdm(f):
@@ -419,7 +422,7 @@ class CvrConnection(object):
                 self.update(_dicts, enh_type)
         print('file read all updated')
 
-    def get_update_list(self):
+    def get_update_list_single_process(self):
         """ Find units that needs updating and their sidstopdateret (last updated)
         the sidstopdateret may be inaccurate and thus way to far back in time therefore we cannot use take the largest
         of sidstopdateret from the database. Seems we download like 600 dicts a second with match_all.
@@ -427,12 +430,12 @@ class CvrConnection(object):
 
         :return datetime (min sidstopdateret), list (enhedsnumer, sidstopdateret)
         """
-        enh_samtid_map = self.make_samtid_table()
+        enh_samtid_map = self.make_samtid_dict()
         oldest_sidstopdateret = datetime.datetime.utcnow().replace(tzinfo=pytz.utc)+datetime.timedelta(days=1)
         update_dicts = {x: {'units': [], 'sidstopdateret': oldest_sidstopdateret} for x in self.source_keymap.values()}
         if len(enh_samtid_map) == 0:
             return update_dicts
-        dummy = self.update_info(samtid=-1, sidstopdateret=self.dummy_date)
+        dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=self.dummy_date)
         print('Get update time for all data')
 
         for _type in self.source_keymap.values():
@@ -444,7 +447,7 @@ class CvrConnection(object):
             # field_list = ['_id'] + ['{0}.sidstOpdateret'.format(key) for key in self.source_keymap.values()] + \
             #          ['{0}.samtId'.format(key) for key in self.source_keymap.values()]
             search = search.fields(fields=field_list)
-            params = {'scroll': self.elastic_search_scroll_time, 'size': 2**11}
+            params = {'scroll': self.elastic_search_scroll_time, 'size': 2**12}
             search = search.params(**params)
             print('ElasticSearch Query: ', search.to_dict())
             generator = search.scan()
@@ -463,6 +466,19 @@ class CvrConnection(object):
                     update_dicts[_type]['units'].append((enhedsnummer, utc_sidstopdateret))
                     # break
         print('Update Info: ')
+        print([(k, v['sidstopdateret'], len(v['units'])) for k, v in update_dicts.items()])
+        return update_dicts
+
+    def get_update_list_type(self, _type):
+        return update_time_worker((_type, self.url, self.user, self.password, self.index))
+
+    def get_update_list(self):
+        """ Threaded version - may not be so IO wait bound since we stream
+        so maybe change to process pool instead """
+        pool = Pool(processes=3)
+        result = pool.map(update_time_worker, [(x, self.url, self.user, self.password, self.index)
+                                               for x in self.source_keymap.values()], chunksize=1)
+        update_dicts = {x: y for (x, y) in result}
         print([(k, v['sidstopdateret'], len(v['units'])) for k, v in update_dicts.items()])
         return update_dicts
 
@@ -507,3 +523,142 @@ class CvrConnection(object):
         generator = search.scan()
         ids = [x.meta.id for x in generator]
         return ids
+
+
+def update_time_worker(args):
+    _type = args[0]
+    url = args[1]
+    user = args[2]
+    password = args[3]
+    index = args[4]
+    enh_samtid_map = CvrConnection.make_samtid_dict()
+    dummy_date = datetime.datetime(year=1001, month=1, day=1, tzinfo=pytz.utc)
+    dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=dummy_date)
+    oldest_sidstopdateret = datetime.datetime.utcnow().replace(tzinfo=pytz.utc) + datetime.timedelta(days=1)
+    type_dict = {'units': [], 'sidstopdateret': oldest_sidstopdateret}
+    if len(enh_samtid_map) == 0:
+        return type_dict
+    elastic_client = create_elastic_connection(url, (user, password))
+    search = Search(using=elastic_client, index=index).query('match_all')
+    sidst_key = '{0}.sidstOpdateret'.format(_type)
+    samt_key = '{0}.samtId'.format(_type)
+    field_list = ['_id', sidst_key, samt_key]
+    search = search.fields(fields=field_list)
+    params = {'scroll': '10m', 'size': 2 ** 12}
+    search = search.params(**params)
+    print('ElasticSearch Query: ', search.to_dict())
+    generator = search.scan()
+    for cvr_update in generator:
+        enhedsnummer = int(cvr_update.meta.id)
+        raw_dat = cvr_update.to_dict()
+        samtid = raw_dat[samt_key][0] if samt_key in raw_dat else None
+        sidstopdateret = raw_dat[sidst_key][0] if sidst_key in raw_dat else None
+        if sidstopdateret is None or samtid is None:
+            continue
+        current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
+        if samtid > current_update.samtid:
+            utc_sidstopdateret = utc_transform(sidstopdateret)
+            type_dict['sidstopdateret'] = min(utc_sidstopdateret, type_dict['sidstopdateret'])
+            type_dict['units'].append((enhedsnummer, utc_sidstopdateret))
+    return _type, type_dict
+
+
+def cvr_update_producer(queue, lock):
+    """ Producer function that places data to be inserted on the Queue
+
+    :param queue: multiprocessing.Queue
+    :param lock: multiprocessing.Lock
+    """
+    engine.dispose()
+    t0 = time.time()
+    with lock:
+        print('Starting producer => {}'.format(os.getpid()))
+    cvr = CvrConnection()
+    enh_samtid_map = CvrConnection.make_samtid_dict()
+    dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=CvrConnection.dummy_date)
+
+    params = {'scroll': cvr.elastic_search_scroll_time, 'size': cvr.elastic_search_scan_size}
+    search = Search(using=cvr.elastic_client, index=cvr.index)
+    search = search.query('match_all')
+    search = search.params(**params)
+
+    generator = search.scan()
+    for i, obj in enumerate(generator):
+        try:
+            dat = obj.to_dict()
+            keys = dat.keys()
+            dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
+            if len(dict_type_set) != 1:
+                add_error('BAD DICT DOWNLOADED', dat)
+                continue
+            dict_type = dict_type_set.pop()
+            dat = dat[dict_type]
+
+            enhedsnummer = dat['enhedsNummer']
+            samtid = dat['samtId']
+            if dat['samtId'] is None:
+                add_error('Samtid none.', enhedsnummer)
+                dat['samtId'] = -1
+                samtid = -1
+            current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
+            if samtid > current_update.samtid:
+                queue.put((dict_type, dat))
+        except Exception as e:
+            print('Producer Exception', e)
+            print('continue producer')
+        if ((i+1) % 100001) == 0:
+            with lock:
+                print('{0} objects parsed'.format(i))
+                # print('test break')
+            # queue.put(cvr.cvr_sentinel)
+            # break
+    # Synchronize access to the console
+    queue.put(cvr.cvr_sentinel)
+    t1 = time.time()
+    with lock:
+        print('Producer Done. Exiting...{0}'.format(os.getpid()))
+        print('Producer Time Used:', t1-t0)
+
+
+def cvr_update_consumer(queue, lock):
+    """
+
+    :param queue: multiprocessing.Queue
+    :param lock: multiprocessing.Lock
+    :return:
+    """
+    engine.dispose()
+    t0 = time.time()
+
+    with lock:
+        print('Starting consumer  => {0}'.format(os.getpid()))
+
+    cvr = CvrConnection()
+    # enh_samtid_map = CvrConnection.make_samtid_dict()
+    # dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=CvrConnection.dummy_date)
+    dicts = {x: list() for x in CvrConnection.source_keymap.values()}
+    while True:
+        # try:
+        obj = queue.get()
+        if obj == cvr.cvr_sentinel:
+            queue.put(cvr.cvr_sentinel)
+            break
+        assert len(obj) == 2, 'obj not length 2 - should be tuple of length 2'
+        dict_type = obj[0]
+        dat = obj[1]
+        dicts[dict_type].append(dat)
+        if len(dicts[dict_type]) >= cvr.update_batch_size:
+            cvr.update(dicts[dict_type], dict_type)
+            dicts[dict_type].clear()
+        # except Exception as e:
+        #     print('Consumer exception', e)
+        #     import pdb
+        #     pdb.set_trace()
+
+    for enh_type, _dicts in dicts.items():
+        if len(_dicts) > 0:
+            cvr.update(_dicts, enh_type)
+    t1 = time.time()
+    with lock:
+        print('Consumer Done. Exiting...{0}'.format(os.getpid()))
+        print('Consuner Time Used:', t1-t0)

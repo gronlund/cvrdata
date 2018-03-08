@@ -1,6 +1,7 @@
 from sqlalchemy import tuple_
-from . import create_session
-
+from . import create_session, engine
+from contextlib import closing
+from .bug_report import add_error
 
 class MyCache(object):
     """ Change to use async inserts perhaps - that would be neat
@@ -42,13 +43,12 @@ class SessionInsertCache(SessionCache):
         # objs = [self.table_class(**d) for d in z]
         # self.session.add_all(objs)
         # t0 = time.time()
-        session = create_session()
-        session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
-        session.commit()
-        session.close()
+        with closing(create_session()) as session:
+            session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
+            session.commit()
         # t1 = time.time()
         # total = t1 - t0
-        # print('time', self.table_class, total)
+        # print('insert cache', self.table_class)
         self.cache = []
 
 
@@ -58,23 +58,27 @@ class SessionKeystoreCache(SessionCache):
         self.keystore = keystore
 
     def commit(self):
-        session = create_session()
-        # does not update the keystore which may be a problem
-        missing = self.keystore.update(session)
-        z = [{x: y for (x, y) in zip(self.fields, c)} for (key, c) in self.cache if key in missing]
         # t0 = time.time()
-        session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
-        session.commit()
-        session.close()
+        # session = create_session()
+        # does not update the keystore which may be a problem
+
+        while True:
+            missing = sorted(self.keystore.update())
+            session = create_session()
+            try:
+                z = [{x: y for (x, y) in zip(self.fields, c)} for (key, c) in self.cache if key in missing]
+                session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
+                session.commit()
+                break
+            except Exception as e:
+                add_error('SessionKeyStoreCache: \n{0}'.format(e))
+                session.rollback()
+            finally:
+                session.close()
         # t1 = time.time()
         # total = t1 - t0
-        # print('time', self.table_class, total)
+        # print('keystore cache', self.table_class)
         self.cache = []
-
-    # def to_dicts(self):
-    #     """ Make data into dicts for bulk insert,
-    #     only insert elements that are missing from database
-    #     """
 
 
 class SessionUpdateCache(SessionCache):
@@ -90,19 +94,28 @@ class SessionUpdateCache(SessionCache):
         self.data_columns = data_columns
 
     def commit(self):
-        """ It not exists insert, else update"""
+        """ It not exists insert, else update
+        Has deadlock issue since we delete then insert.
+        """
         if len(self.cache) == 0:
             return
-        keys = [x[0] for x in self.cache]
+        # print('update cache', self.table_class, 'pid', os.getpid())
+        self.cache = sorted(self.cache)
+        keys = [x for (x, y) in self.cache]
         # delete all keys
         flatten_dat = [x+y for (x, y) in self.cache]
-        # print(self.session.query(self.table_class).filter(tuple_(*self.key_columns).in_(keys)).statement)
-        session = create_session()
-        session.query(self.table_class).filter(tuple_(*self.key_columns).in_(keys)).delete(synchronize_session=False)
-        session.expire_all()
         z = [{x: y for (x, y) in zip(self.fields, c)} for c in flatten_dat]
-        # insert them again
-        session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
-        session.commit()
-        session.close()
+        session = create_session()
+        while True:
+            try:
+                session.query(self.table_class).with_lockmode('update').filter(tuple_(*self.key_columns).in_(keys)).delete(synchronize_session=False)
+                session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
+                session.commit()
+                break
+            except Exception as e:
+                session.rollback()
+                add_error('SessionUpdateCache: \n{0}'.format(e))
+                #  logging.info('Deadlock issue in delete insert - RETRY\n{0}'.format(e))
+            finally:
+                session.close()
         self.cache = []

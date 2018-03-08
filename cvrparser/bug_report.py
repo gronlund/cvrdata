@@ -1,3 +1,5 @@
+import logging
+
 def add_error(mess, enh):
     """
     Use to report bugs somehow
@@ -5,5 +7,4 @@ def add_error(mess, enh):
     :param enh:
     :return:
     """
-    pass
-    #print('add error: ', mess, enh)
+    logging.debug(mess)
