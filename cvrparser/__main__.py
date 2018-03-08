@@ -7,7 +7,6 @@ from . import (interactive_ensure_config_exists,
 from .elastic_cvr_extract import CvrConnection
 from . import cvr_makedb
 
-
 class Commands:
 
     @staticmethod
