@@ -234,7 +234,7 @@ def create_virk_attributter(db):
                     att.gyldigfra,
                     att.gyldigtil, att.sidstopdateret]).\
         where(att.enhedsnummer == vs.enhedsnummer)
-    create_view('virk_virksomhedsstatus', query, db)
+    create_view('virk_attributter', query, db)
 
 
 def create_virk_name_view(db):
