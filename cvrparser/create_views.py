@@ -56,6 +56,7 @@ def create_views():
     create_virk_status_view(db)
     create_virk_kredit_status_view(db)
     create_virk_name_view(db)
+    create_virk_attributter(db)
     create_relation_view(db)
     db = alchemy_tables.DBModel()
     create_board_view(db)
@@ -218,6 +219,21 @@ def create_virk_status_view(db):
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype == 'virksomhedsstatus').\
         where(stat.virksomhedsstatusid==upd.kode)
+    create_view('virk_virksomhedsstatus', query, db)
+
+
+def create_virk_attributter(db):
+    att = alchemy_tables.Attributter
+    vs = alchemy_tables.Virksomhed
+    query = select([vs.enhedsnummer,
+                    vs.cvrnummer,
+                    att.vaerdinavn,
+                    att.vaerdi,
+                    att.vaerditype,
+                    att.sekvensnr,
+                    att.gyldigfra,
+                    att.gyldigtil, att.sidstopdateret]).\
+        where(att.enhedsnummer == vs.enhedsnummer)
     create_view('virk_virksomhedsstatus', query, db)
 
 
