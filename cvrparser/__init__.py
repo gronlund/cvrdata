@@ -51,8 +51,7 @@ class DefaultSessionProxy:
 config_fields = ['host', 'port', 'user',
                  'passwd', 'database',
                  'sql_type', 'cvr_user',
-                 'cvr_passwd', 'charset',
-                 'data_path']
+                 'cvr_passwd', 'charset']
 
 
 def interactive_configure_connection():
@@ -77,13 +76,13 @@ def interactive_configure_connection():
     cvr_user = input('CVR User: ')
     cvr_passwd = getpass.getpass()
     print('Please enter path where cvr data can be downloaded')
-    data_path = input('Data Path: ')
+    # data_path = input('Data Path: ')
     config_values = {
         'Global': dict(
             host=host, port=port, user=user, passwd=passwd, database=database,
             sql_type=sql_type, charset='utf8mb4',
-            cvr_user=cvr_user, cvr_passwd=cvr_passwd,
-            data_path=data_path
+            cvr_user=cvr_user, cvr_passwd=cvr_passwd
+            # data_path=data_path
         )
     }
     _config = configparser.ConfigParser()

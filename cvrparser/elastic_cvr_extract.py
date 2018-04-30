@@ -601,13 +601,16 @@ def cvr_update_producer(queue, lock):
         except Exception as e:
             print('Producer Exception', e)
             print('continue producer')
-        if ((i+1) % 100001) == 0:
+        if ((i+1) % 50000) == 0:
             with lock:
-                print('{0} objects parsed'.format(i))
+                print('{0} objects parsed and inserted into queue'.format(i, ))
                 # print('test break')
             # queue.put(cvr.cvr_sentinel)
             # break
     # Synchronize access to the console
+    with lock:
+        print('all objects parsed ')
+
     queue.put(cvr.cvr_sentinel)
     t1 = time.time()
     with lock:
@@ -635,16 +638,21 @@ def cvr_update_consumer(queue, lock):
     while True:
         # try:
         obj = queue.get()
-        if obj == cvr.cvr_sentinel:
-            queue.put(cvr.cvr_sentinel)
-            break
-        assert len(obj) == 2, 'obj not length 2 - should be tuple of length 2'
-        dict_type = obj[0]
-        dat = obj[1]
-        dicts[dict_type].append(dat)
-        if len(dicts[dict_type]) >= cvr.update_batch_size:
-            cvr.update(dicts[dict_type], dict_type)
-            dicts[dict_type].clear()
+        try:
+            if obj == cvr.cvr_sentinel:
+                queue.put(cvr.cvr_sentinel)
+                break
+            assert len(obj) == 2, 'obj not length 2 - should be tuple of length 2'
+            dict_type = obj[0]
+            dat = obj[1]
+            dicts[dict_type].append(dat)
+            if len(dicts[dict_type]) >= cvr.update_batch_size:
+                cvr.update(dicts[dict_type], dict_type)
+                dicts[dict_type].clear()
+        except Exception as e:
+            print('Exception  on - restart')
+            print(obj)
+            print(e)
         # except Exception as e:
         #     print('Consumer exception', e)
         #     import pdb
@@ -655,5 +663,4 @@ def cvr_update_consumer(queue, lock):
             cvr.update(_dicts, enh_type)
     t1 = time.time()
     with lock:
-        print('Consumer Done. Exiting...{0}'.format(os.getpid()))
-        print('Consuner Time Used:', t1-t0)
+        print('Consumer Done. Exiting...{0} - time used {1}'.format(os.getpid()), t1-t0)

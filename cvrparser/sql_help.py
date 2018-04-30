@@ -1,7 +1,8 @@
 from sqlalchemy import tuple_
-from . import create_session, engine
+from . import create_session
 from contextlib import closing
 from .bug_report import add_error
+
 
 class MyCache(object):
     """ Change to use async inserts perhaps - that would be neat
