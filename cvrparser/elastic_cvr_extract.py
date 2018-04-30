@@ -24,7 +24,7 @@ def update_all_mp(workers=1):
     logger = multiprocessing.get_logger()
     logger.setLevel(logging.INFO)
     lock = multiprocessing.Lock()
-    queue = multiprocessing.Queue()
+    queue = multiprocessing.Queue(1000*1000*20)
     # cvr_update_producer(queue, lock)
     # cvr_update_consumer(queue, lock)
     # assert False
@@ -597,7 +597,12 @@ def cvr_update_producer(queue, lock):
                 samtid = -1
             current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
             if samtid > current_update.samtid:
-                queue.put((dict_type, dat))
+                while True:
+                    try:
+                        queue.put((dict_type, dat), timeout=15)
+                        break
+                    except Exception as e:
+                        print('Put timeout failed - retrying', e)
         except Exception as e:
             print('Producer Exception', e)
             print('continue producer')
@@ -637,7 +642,12 @@ def cvr_update_consumer(queue, lock):
     dicts = {x: list() for x in CvrConnection.source_keymap.values()}
     while True:
         # try:
-        obj = queue.get()
+        while True:
+            try:
+                obj = queue.get(timeout=15)
+                break
+            except Exception as e:
+                print('timeout reached - retrying', e)
         try:
             if obj == cvr.cvr_sentinel:
                 queue.put(cvr.cvr_sentinel)
