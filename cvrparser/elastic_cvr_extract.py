@@ -24,7 +24,7 @@ def update_all_mp(workers=1):
     logger = multiprocessing.get_logger()
     logger.setLevel(logging.INFO)
     lock = multiprocessing.Lock()
-    queue = multiprocessing.Queue(1000*1000*20)
+    queue = multiprocessing.Queue() # maxsize=1000*1000*20)
     # cvr_update_producer(queue, lock)
     # cvr_update_consumer(queue, lock)
     # assert False
@@ -663,6 +663,7 @@ def cvr_update_consumer(queue, lock):
             print('Exception  on - restart')
             print(obj)
             print(e)
+            raise e
         # except Exception as e:
         #     print('Consumer exception', e)
         #     import pdb
