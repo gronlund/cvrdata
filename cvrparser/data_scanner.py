@@ -107,8 +107,14 @@ class Mapping(object):
                 # new = {x[:self.keylen]: x[self.keylen:] for x in res}
                 new = {x[:self.keylen]: x[-1] for x in res}
             new_keys = set(new.keys())
-            assert new_keys.issubset(self.unmapped), '{0} - {1} - {2} - {3}'.format(self.keycol, self.val,
-                                                                              new_keys.difference(self.unmapped), query)
+            if not new_keys.issubset(self.unmapped):
+                print('{0} - {1} - {2}'.format(self.keycol, self.val, new_keys.difference(self.unmapped)))
+                print(query)
+                print('unmapped', len(self.unmapped), self.unmapped)
+                print('new keys', len(new_keys), new_keys)
+                print('new', len(new), new)
+                print('lens compared', len(res), len(new))
+                assert False
             missing = self.unmapped - set(new.keys())
             self.mapped.update(new)
             self.unmapped = missing

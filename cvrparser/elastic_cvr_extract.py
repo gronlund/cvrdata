@@ -644,7 +644,7 @@ def cvr_update_consumer(queue, lock):
         # try:
         while True:
             try:
-                obj = queue.get(timeout=15)
+                obj = queue.get(timeout=30)
                 break
             except Exception as e:
                 print('timeout reached - retrying', e)
