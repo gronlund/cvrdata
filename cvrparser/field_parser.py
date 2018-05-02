@@ -163,7 +163,7 @@ class StaticParser(Parser):
 
     def insert(self, data):
         dat = [data[x] if x in data else None for x in self.json_fields]
-        time_dat = [data[x] if (x in data and data[x] is not None)else None for x in self.timestamps]
+        time_dat = [data[x] if (x in data and data[x] is not None) else None for x in self.timestamps]
         time_dat = [utc_transform(x) if x is not None else None for x in time_dat]
         dat = tuple(dat + time_dat)
         self.db.insert(dat)
@@ -186,6 +186,8 @@ class UploadData(Parser):
                 continue
             for z in data[f]:
                 ukey = self.key_type(z[self.key])
+                if type(ukey) is str:
+                    ukey = ukey.strip()
                 if ukey is None or ukey in self.keystore:
                     continue
                 self.keystore.add(ukey)
@@ -250,6 +252,8 @@ class UploadMappedUpdates(Parser):
                 val = z[update_mapping.key]
                 if val is None:
                     continue
+                if type(val) is str:
+                    val = val.strip()
                 dat = update_mapping.field_map[val]
                 tfrom, tto, utc_sidst_opdateret = get_date(z)
                 tup = (enh, update_mapping.field_type, dat, tfrom, tto, utc_sidst_opdateret)
@@ -343,7 +347,7 @@ class AttributParser(Parser):
             for vd in vds:
                 tfrom, tto, utc_sidstopdateret = get_date(vd)
                 vaerdi = vd['vaerdi']
-                dat = tuple(dat1+[vaerdi, tfrom, tto, utc_sidstopdateret])
+                dat = tuple(dat1 + [vaerdi, tfrom, tto, utc_sidstopdateret])
                 upload.append(dat)
         [self.db.insert(x) for x in set(upload)]
 
