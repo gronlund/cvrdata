@@ -1,16 +1,17 @@
 import warnings
 import argparse
 import logging
-
+import cProfile
+import pstats
+import io
 from .elastic_cvr_extract import CvrConnection
 from . import cvr_makedb
 from . import setup_database_connection
-import cProfile, pstats, io
 
 
-def info_print(s):
+def info_print(_s):
     stars = '*' * 10
-    print('{0} {1} {2}'.format(stars, s, stars))
+    print('{0} {1} {2}'.format(stars, _s, stars))
 
 
 def run_init():
@@ -25,7 +26,7 @@ def fill_dawa(dawa_file):
     crdb.fill_dawa_table(dawa_file=dawa_file)
 
 
-def fill_employment(db_model, file_path):
+def fill_employment(file_path):
     crdb = cvr_makedb.MakeCvrDatabase()
     crdb.fill_employment_tables_from_file(file_path)
 
@@ -62,6 +63,7 @@ def run_small_test(ecvr):
                  4006955671, 4001806178, 4001462608, 5893048, 5314938, 4005939397, 4000795475, 4002004159,
                  4003799780, 4000683468, 4001970642]
 
+    # companies = [4007568555]
     # companies = [4001178549, 4001394153, 749, 4046495, 4001156549, 4001756407, 867703, 4006491007, 3595755,
     #              4006829870, 4002005199, 4001726704, 5768770, 4006916557, 4006916557, 4006511400, 4006372756,
     #              4006372744, 4006510742, 4006372756, 4006829870, 4006491007, 4056080, 4001815333, 4006395397,
@@ -72,7 +74,9 @@ def run_small_test(ecvr):
     # companies = [4006898357]
     # companies = companies[0:2]
     print('insert companies')
-    ecvr.update_units(companies)
+    for comp in companies:
+        print('insert', comp)
+        ecvr.update_units([comp])
     # is a person
     people = [4000034553, 4004192836, 4004194126, 4000145625, 4005983489]
     # # people = [4000145625]
@@ -83,18 +87,19 @@ def run_small_test(ecvr):
     ecvr.update_units(penhed)
 
 
-def run_delete_test(cvr):
+def run_delete_test(mycvr):
     companies = [4001178549, 4001394153, 749, 4046495]
     # companies = companies[0:2]
     print('delete company')
-    cvr.delete(companies, cvr.company_type)
+    mycvr.delete(companies, mycvr.company_type)
     people = [4000034553, 4004192836, 4004194126]
     print('delete people')
-    cvr.delete(people, cvr.person_type)
+    mycvr.delete(people, mycvr.person_type)
     print('delete punit')
     penhed = [4002535375, 4002241948, 4002211395]
-    cvr.delete(penhed, cvr.penhed_type)
-        
+    mycvr.delete(penhed, mycvr.penhed_type)
+
+
 def data_test(ecvr):
     enh = 743
     print('update enh', 743)
@@ -137,7 +142,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     args = parser.parse_args()
     setup_database_connection()
-
     # config = db_setup.get_config()
     setup_args = {}
     # if args.disable_warnings:
@@ -145,14 +149,10 @@ if __name__ == '__main__':
     # if args.fill_emp:
     #     info_print('Fill exact employee numbers from file')
     #     fill_employment(dbmodel, config['employmentpath'])
-
-
     # if args.logging:
     #     logging.basicConfig(level=logging.DEBUG)
-
     if args.db is not None:
         setup_args['db'] = args.db
-
     if args.init:
         info_print('Initialiaze database by creating necessary tables')
         run_init()
@@ -192,7 +192,7 @@ if __name__ == '__main__':
     if args.threading:
         import time
         t0 = time.time()
-        #a = cvr.get_update_list()
+        # a = cvr.get_update_list()
         t1 = time.time()
         b = cvr.get_update_lists_threaded()
         t2 = time.time()
