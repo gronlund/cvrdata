@@ -6,7 +6,6 @@ from . import field_parser as field_parser
 from . import adresse
 from . import alchemy_tables
 from . import Session
-import logging
 
 
 def insert_values(dicts, parser):
@@ -108,12 +107,13 @@ class Mapping(object):
                 new = {x[:self.keylen]: x[-1] for x in res}
             new_keys = set(new.keys())
             if not new_keys.issubset(self.unmapped):
-                print('{0} - {1} - {2}'.format(self.keycol, self.val, new_keys.difference(self.unmapped)))
-                print(query)
+                print('new_keys not in unmapped: {0} - {1}'.format(self.keycol, self.val))
                 print('unmapped', len(self.unmapped), self.unmapped)
                 print('new keys', len(new_keys), new_keys)
                 print('new', len(new), new)
                 print('lens compared', len(res), len(new))
+                print('difference new_keys.difference(self.unmapped)', new_keys.difference(self.unmapped))
+                print('difference self.unmapped.difference(new_keys)', self.unmapped.difference(new_keys))
                 assert False
             missing = self.unmapped - set(new.keys())
             self.mapped.update(new)
