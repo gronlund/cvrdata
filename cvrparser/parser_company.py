@@ -60,7 +60,12 @@ class StatusKoderMap(fp.Parser):
 
 
 class VirksomhedParserFactory(object):
+
     def __init__(self, key_store):
+        """
+
+        :param key_store: data_scanner.KeyStore
+        """
         self.key_store = key_store
 
     @staticmethod
@@ -159,9 +164,10 @@ class VirksomhedParserFactory(object):
         penheder = ('penheder', 'pNummer', 'penhed')
 
         # Mapped Inserts
+        # company status
         virksomhedsstatus_mapping = self.key_store.get_virksomhedsstatus_mapping()
         virksomhedsstatus = ('virksomhedsstatus', 'status', 'virksomhedsstatus', virksomhedsstatus_mapping)
-
+        # regnummer is obsolete i think...
         regnummer_mapping = self.key_store.get_regnummer_mapping()
         regnummer = ('regNummer', 'regnummer', 'regnummer', regnummer_mapping)
         # # navn, binavn
@@ -192,55 +198,5 @@ class VirksomhedParserFactory(object):
         vp.add_listener(parser_organisation.CompanyOrganisationParser())
         vp.add_listener(parser_organisation.CompanyOrganisationMemberParser())
         vp.add_listener(parser_organisation.SpaltningFusionParser())
-
-        # produktionsenheder
-        # vp.add_listener(fp.UploadTimeDirect('penheder', 'pNummer', 'penhed'))
-        # # virksomhedsform
-        # vp.add_listener(fp.UploadTimeDirect('virksomhedsform',
-        #                                     'virksomhedsformkode',
-        #                                     'virksomhedsform'))
-        # # brancher
-        # vp.add_listener(fp.UploadTimeDirect('hovedbranche',
-        #                                     'branchekode',
-        #                                     'hovedbranche'))
-        # vp.add_listener(fp.UploadTimeDirect('bibranche1',
-        #                                     'branchekode',
-        #                                     'bibranche1'))
-        # vp.add_listener(fp.UploadTimeDirect('bibranche2',
-        #                                     'branchekode',
-        #                                     'bibranche2'))
-        # vp.add_listener(fp.UploadTimeDirect('bibranche3',
-        #                                     'branchekode',
-        #                                     'bibranche3'))
-        # vp.add_listener(StatusKoderMap())
-        # # virksomhedsstatus
-        # virksomhedsstatus_mapping = self.key_store.get_virksomhedsstatus_mapping()
-        # vp.add_listener(fp.UploadTimeMap('virksomhedsstatus',
-        #                                  'status',
-        #                                  'virksomhedsstatus',
-        #                                  virksomhedsstatus_mapping))
-        # # regnummer
-        # regnummer_mapping = self.key_store.get_regnummer_mapping()
-        # vp.add_listener(fp.UploadTimeMap('regNummer', 'regnummer', 'regnummer', regnummer_mapping))
-        # # navn, binavn
-        # name_mapping = self.key_store.get_name_mapping()
-        # vp.add_listener(fp.UploadTimeMap('navne', 'navn', 'navn', name_mapping))
-        # vp.add_listener(fp.UploadTimeMap('binavne', 'navn', 'binavn', name_mapping))
-        # # kontaktinfo
-        # kontakt_mapping = self.key_store.get_kontakt_mapping()
-        # # elektroniskpost
-        # vp.add_listener(fp.UploadTimeMap('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', kontakt_mapping))
-        # # telefonnummer
-        # vp.add_listener(fp.UploadTimeMap('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping))
-        # # telefaxnummer
-        # vp.add_listener(fp.UploadTimeMap('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping))
-        # # obligatoriskkemail
-        # vp.add_listener(fp.UploadTimeMap('obligatoriskEmail', 'kontaktoplysning',
-        # 'obligatoriskemail', kontakt_mapping))
-        # # hjemmeside
-        # vp.add_listener(fp.UploadTimeMap('hjemmeside', 'kontaktoplysning', 'hjemmeside', kontakt_mapping))
-        # relation parser
-        # vp.add_listener(fp.UploadTimeDirect('penheder', 'pNummer', 'penhed'))
-        # # virksomhedsform
 
         return vp
