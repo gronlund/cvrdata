@@ -648,7 +648,7 @@ def cvr_update_consumer(queue, lock):
                 break
             except Exception as e:
                 print('timeout reached - retrying', e)
-        try:
+        try:  # move this
             if obj == cvr.cvr_sentinel:
                 queue.put(cvr.cvr_sentinel)
                 break
@@ -674,4 +674,4 @@ def cvr_update_consumer(queue, lock):
             cvr.update(_dicts, enh_type)
     t1 = time.time()
     with lock:
-        print('Consumer Done. Exiting...{0} - time used {1}'.format(os.getpid()), t1-t0)
+        print('Consumer Done. Exiting...{0} - time used {1}'.format(os.getpid(), t1-t0))
