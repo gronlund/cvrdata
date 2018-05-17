@@ -573,48 +573,53 @@ def cvr_update_producer(queue, lock):
     t0 = time.time()
     with lock:
         print('Starting producer => {}'.format(os.getpid()))
-    cvr = CvrConnection()
-    enh_samtid_map = CvrConnection.make_samtid_dict()
-    dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=CvrConnection.dummy_date)
-    params = {'scroll': cvr.elastic_search_scroll_time, 'size': cvr.elastic_search_scan_size}
-    search = Search(using=cvr.elastic_client, index=cvr.index).query('match_all').params(**params)
-    generator = search.scan()
-    for i, obj in enumerate(generator):
-        try:
-            dat = obj.to_dict()
-            keys = dat.keys()
-            dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
-            if len(dict_type_set) != 1:
-                add_error('BAD DICT DOWNLOADED \n{0}'.format(dat))
-                continue
-            dict_type = dict_type_set.pop()
-            dat = dat[dict_type]
-            enhedsnummer = dat['enhedsNummer']
-            samtid = dat['samtId']
-            if dat['samtId'] is None:
-                add_error('Samtid none: enh {0}'.format(enhedsnummer))
-                dat['samtId'] = -1
-                samtid = -1
-            current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
-            if samtid > current_update.samtid:
-                while True:
-                    try:
-                        queue.put((dict_type, dat), timeout=15)
-                        break
-                    except Exception as e:
-                        print('Put timeout failed - retrying', e)
-        except Exception as e:
-            print('Producer Exception', e)
-            print('continue producer')
-        if ((i+1) % 50000) == 0:
-            with lock:
-                print('{0} objects parsed and inserted into queue'.format(i, ))
-                # print('test break')
-            # queue.put(cvr.cvr_sentinel)
-            # break
+    try:
+        cvr = CvrConnection()
+        enh_samtid_map = CvrConnection.make_samtid_dict()
+        dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=CvrConnection.dummy_date)
+        params = {'scroll': cvr.elastic_search_scroll_time, 'size': cvr.elastic_search_scan_size}
+        search = Search(using=cvr.elastic_client, index=cvr.index).query('match_all').params(**params)
+        generator = search.scan()
+        for i, obj in enumerate(generator):
+            try:
+                dat = obj.to_dict()
+                keys = dat.keys()
+                dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
+                if len(dict_type_set) != 1:
+                    add_error('BAD DICT DOWNLOADED \n{0}'.format(dat))
+                    continue
+                dict_type = dict_type_set.pop()
+                dat = dat[dict_type]
+                enhedsnummer = dat['enhedsNummer']
+                samtid = dat['samtId']
+                if dat['samtId'] is None:
+                    add_error('Samtid none: enh {0}'.format(enhedsnummer))
+                    dat['samtId'] = -1
+                    samtid = -1
+                current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
+                if samtid > current_update.samtid:
+                    while True:
+                        try:
+                            queue.put((dict_type, dat), timeout=15)
+                            break
+                        except Exception as e:
+                            print('Producer timeout failed - retrying', e)
+            except Exception as e:
+                print('Producer Exception', e)
+                print('continue producer')
+            if ((i+1) % 10000) == 0:
+                with lock:
+                    print('{0} objects parsed and inserted into queue'.format(i, ))
+                    # print('test break')
+                # queue.put(cvr.cvr_sentinel)
+                # break
+    except Exception as e:
+        print('generator error', e)
+
+
     # Synchronize access to the console
     with lock:
-        print('all objects parsed ')
+        print('objects parsing done')
 
     queue.put(cvr.cvr_sentinel)
     t1 = time.time()
@@ -647,7 +652,7 @@ def cvr_update_consumer(queue, lock):
                 obj = queue.get(timeout=30)
                 break
             except Exception as e:
-                print('timeout reached - retrying', e)
+                print('consumer timeout reached - retrying', e)
         try:  # move this
             if obj == cvr.cvr_sentinel:
                 queue.put(cvr.cvr_sentinel)
