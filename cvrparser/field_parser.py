@@ -179,6 +179,8 @@ class UploadData(Parser):
         self.data_fields = data_fields
         self.keystore = mapping
         self.key_type = key_type
+        if mapping is None:
+            assert False
 
     def insert(self, data):
         for f in self.json_fields:
@@ -191,7 +193,7 @@ class UploadData(Parser):
                 if ukey is None or ukey in self.keystore:
                     continue
                 self.keystore.add(ukey)
-                hb = tuple(z[df] for df in self.data_fields)
+                hb = tuple(z[df].strip() if type(z[df]) is str else z[df] for df in self.data_fields)
                 self.db.insert((ukey, hb))
 
 

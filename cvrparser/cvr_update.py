@@ -174,7 +174,7 @@ if __name__ == '__main__':
         cvr.update_all(args.resume)
     if args.enh is not None:
         info_print('Update specific enhedsnummer:')
-        cvr.update_units(args.enh)
+        cvr.update_units([args.enh])
     if args.time:
         pr = cProfile.Profile()
         pr.enable()
