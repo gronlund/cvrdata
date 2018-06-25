@@ -1,7 +1,6 @@
 import pytz
 import dateutil
 import datetime
-import sys
 from dateutil.parser import parse as date_parse
 from .sql_help import SessionInsertCache, SessionKeystoreCache
 from .adresse import beliggenhedsadresse_to_str
@@ -173,7 +172,7 @@ class UploadData(Parser):
     """ Simple class for uploading value data values to database """
 
     def __init__(self, table_class, columns, json_fields, key, data_fields, mapping, key_type=lambda x: x):
-        super().__init__(table_class, columns, keystore=mapping)
+        super().__init__(table_class=table_class, columns=columns, keystore=mapping)
         self.json_fields = json_fields
         self.key = key
         self.data_fields = data_fields
@@ -197,6 +196,32 @@ class UploadData(Parser):
                 self.db.insert((ukey, hb))
 
 
+class UploadBrancheData(Parser):
+
+    def __init__(self, keystore):
+        columns = [alchemy_tables.Branche.branchekode, alchemy_tables.Branche.branchetekst]
+        super().__init__(table_class=alchemy_tables.Branche, columns=columns, keystore=keystore)
+        self.json_fields = ['hovedbranche', 'bibranche1', 'bibranche2', 'bibranche3']
+        self.keystore = keystore
+
+    def insert(self, data):
+        for f in self.json_fields:
+            if f not in data:
+                continue
+            for z in data[f]:
+                try:
+                    key = (int(z['branchekode']), z['branchetekst'].strip())
+                    if key in self.keystore:
+                        continue
+                    self.keystore.add(key)
+                    self.db.insert((key, key))
+                except Exception as e:
+                    add_error('bad key in upload branche {0} {1}'.format(e, z))
+
+
+
+
+
 class IdentityDict(object):
     def __getitem__(self, item):
         return item
@@ -204,7 +229,7 @@ class IdentityDict(object):
 
 class UpdateMapping(object):
 
-    def __init__(self, json_field, key, field_type, field_map=None):
+    def __init__(self, json_field, key, field_type, field_map=None, key_map=str.strip):
         """
         :param json_field: str, field to extract data from (from dict root)
         :param key: str, id of data field to extract
@@ -220,7 +245,9 @@ class UpdateMapping(object):
             self.field_map = field_map
 
     def __str__(self):
-        return ' '.join([self.json_field, self.key, self.field_type])
+        if type(self.key) is str:
+            return ' '.join([self.json_field, self.field_type, self.key])
+        return 'tuple key: ' + ' '.join([self.json_field, self.field_type]+list(self.key))
 
 
 class UploadMappedUpdates(Parser):
@@ -251,11 +278,17 @@ class UploadMappedUpdates(Parser):
         upload = []
         for update_mapping in self.updatemap_list:
             for z in data[update_mapping.json_field]:
-                val = z[update_mapping.key]
-                if val is None:
-                    continue
-                if type(val) is str:
-                    val = val.strip()
+                if type(update_mapping.key) is tuple:
+                    # branche - know the types not pretty
+                    val = (int(z[update_mapping.key[0]]), z[update_mapping.key[1]].strip())
+                    # if val[0] is None or val[1] is None:
+                    #     continue
+                else:
+                    val = z[update_mapping.key]
+                    if val is None:
+                        continue
+                    if type(val) is str:
+                        val = val.strip()
                 dat = update_mapping.field_map[val]
                 tfrom, tto, utc_sidst_opdateret = get_date(z)
                 tup = (enh, update_mapping.field_type, dat, tfrom, tto, utc_sidst_opdateret)
@@ -399,7 +432,8 @@ class ParserFactory(object):
             'columns': [alchemy_tables.Branche.branchekode, alchemy_tables.Branche.branchetekst],
             'mapping': key_store.get_branche_mapping(),
         }
-        return UploadData(**branche_config)
+        return UploadBrancheData(keystore=key_store.get_branche_mapping())
+        # return UploadData(**branche_config)
 
     @staticmethod
     def get_navne_parser(key_store):

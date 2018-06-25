@@ -20,7 +20,8 @@ class UploadStatusTyper(fp.Parser):
             if key in self.keystore or key is None:
                 continue
             self.keystore.add(key)
-            dat = (z['statuskode'], z['kreditoplysningkode'])
+            dat = key
+            # dat = (z['statuskode'], z['kreditoplysningkode'])
             self.db.insert((key, dat))
 
 
@@ -157,10 +158,10 @@ class VirksomhedParserFactory(object):
 
         # Direct Inserts
         virksomhedsform = ('virksomhedsform', 'virksomhedsformkode', 'virksomhedsform')
-        hovedbranche = ('hovedbranche', 'branchekode', 'hovedbranche')
-        bibranche1 = ('bibranche1', 'branchekode', 'bibranche1')
-        bibranche2 = ('bibranche2', 'branchekode', 'bibranche2')
-        bibranche3 = ('bibranche3', 'branchekode', 'bibranche3')
+        # hovedbranche = ('hovedbranche', 'branchekode', 'hovedbranche')
+        # bibranche1 = ('bibranche1', 'branchekode', 'bibranche1')
+        # bibranche2 = ('bibranche2', 'branchekode', 'bibranche2')
+        # bibranche3 = ('bibranche3', 'branchekode', 'bibranche3')
         penheder = ('penheder', 'pNummer', 'penhed')
 
         # Mapped Inserts
@@ -186,12 +187,27 @@ class VirksomhedParserFactory(object):
         email = ('obligatoriskEmail', 'kontaktoplysning', 'obligatoriskemail', kontakt_mapping)
         # # hjemmeside
         hjemmeside = ('hjemmeside', 'kontaktoplysning', 'hjemmeside', kontakt_mapping)
+        # Brancher
+        branche_mapping = self.key_store.get_branche_mapping()
+        hovedbranche = fp.UpdateMapping(json_field='hovedbranche', key=('branchekode', 'branchetekst'),
+                                        field_type='hovedbranche', field_map=branche_mapping)
+        bibranche1 = fp.UpdateMapping(json_field='bibranche1', key=('branchekode', 'branchetekst'),
+                                        field_type='bibranche1', field_map=branche_mapping)
+        bibranche2 = fp.UpdateMapping(json_field='bibranche2', key=('branchekode', 'branchetekst'),
+                                        field_type='bibranche2', field_map=branche_mapping)
+        bibranche3 = fp.UpdateMapping(json_field='bibranche3', key=('branchekode', 'branchetekst'),
+                                        field_type='bibranche3', field_map=branche_mapping)
 
         update_parser = fp.UploadMappedUpdates()
-        for item in (virksomhedsform, hovedbranche, bibranche1, bibranche2, bibranche3, penheder):
+        for item in (virksomhedsform,  penheder):
             update_parser.add_mapping(fp.UpdateMapping(*item))
         for item in (virksomhedsstatus, regnummer, navne, binavne, epost, tlf, fax, email, hjemmeside):
             update_parser.add_mapping(fp.UpdateMapping(*item))
+        update_parser.add_mapping(hovedbranche)
+        update_parser.add_mapping(bibranche1)
+        update_parser.add_mapping(bibranche2)
+        update_parser.add_mapping(bibranche3)
+
 
         vp.add_listener(update_parser)
         # navne_parser = parser_organisation.OrganisationNavnParser()

@@ -1,5 +1,5 @@
-from elasticsearch1 import Elasticsearch
-from elasticsearch1_dsl import Search
+from elasticsearch import Elasticsearch
+from elasticsearch_dsl import Search
 from collections import namedtuple
 import datetime
 import ujson as json
@@ -84,8 +84,8 @@ class CvrConnection(object):
         self.address_parser_factory = data_scanner.AddressParserFactory()
         # self.ElasticParams = [self.url, (self.user, self.password), 60, 10, True]
         self.elastic_client = create_elastic_connection(self.url, (self.user, self.password))
-        self.elastic_search_scan_size = 128
-        self.elastic_search_scroll_time = u'10m'
+        self.elastic_search_scan_size = 256
+        self.elastic_search_scroll_time = u'20m'
         # max number of updates to download without scan scroll
         self.max_download_size = 200000
         self.update_list = namedtuple('update_list',
@@ -338,7 +338,7 @@ class CvrConnection(object):
         data_parser.parse_data(dicts)
         # logging.info('fixed valued parsed')
         data_parser.parse_dynamic_data(dicts)
-        # print('dynamic data inserted')
+        # logging.info('dynamic data inserted')
         address_parser.parse_address_data(dicts)
         # print('address data inserted/skipped - start static')
         data_parser.parse_static_data(dicts)
@@ -598,15 +598,18 @@ def cvr_update_producer(queue, lock):
                     samtid = -1
                 current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
                 if samtid > current_update.samtid:
-                    while True:
+                    for repeat in range(100):
                         try:
-                            queue.put((dict_type, dat), timeout=15)
+                            queue.put((dict_type, dat), timeout=60)
                             break
                         except Exception as e:
-                            print('Producer timeout failed - retrying', e)
+                            print('Producer timeout failed - retrying', repeat, e, dict_type, dat)
             except Exception as e:
-                print('Producer Exception', e)
+                print('Producer Exception: ', e, i)
                 print('continue producer')
+                import pdb
+                pdb.set_trace()
+                print(obj)
             if ((i+1) % 10000) == 0:
                 with lock:
                     print('{0} objects parsed and inserted into queue'.format(i, ))
@@ -614,7 +617,7 @@ def cvr_update_producer(queue, lock):
                 # queue.put(cvr.cvr_sentinel)
                 # break
     except Exception as e:
-        print('generator error', e)
+        print('*** generator error ***', e)
 
 
     # Synchronize access to the console
@@ -626,6 +629,32 @@ def cvr_update_producer(queue, lock):
     with lock:
         print('Producer Done. Exiting...{0}'.format(os.getpid()))
         print('Producer Time Used:', t1-t0)
+
+
+def test_producer():
+    print('test producer')
+
+    class dumqueue():
+        def __init__(self):
+            self.counter = {}
+
+        def put(self, obj):
+            dict_type = obj[0]
+            if dict_type in self.counter:
+                self.counter[dict_type] += 1
+            else:
+                self.counter[dict_type] = 1
+            dat = obj[1]
+
+
+    class dumlock():
+        def __enter__(self):
+            pass
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    cvr_update_producer(dumqueue(), dumlock())
 
 
 def cvr_update_consumer(queue, lock):

@@ -145,10 +145,11 @@ class KeyStore(object):
                                       keylen=2,
                                       keycol=(alchemy_tables.Statuskode.statuskode,
                                               alchemy_tables.Statuskode.kreditoplysningskode))
-        self.branche_mapping = Mapping(val=alchemy_tables.Branche.branchekode,
-                                       keycol=alchemy_tables.Branche.branchekode)
         self.virksomhedsform_mapping = Mapping(val=alchemy_tables.Virksomhedsform.virksomhedsformkode,
                                                keycol=alchemy_tables.Virksomhedsform.virksomhedsformkode)
+        self.branche_mapping = Mapping(val=alchemy_tables.Branche.brancheid,
+                                       keylen=2,
+                                       keycol=(alchemy_tables.Branche.branchekode, alchemy_tables.Branche.branchetekst))
 
     def get_virksomhedsform_mapping(self):
         self.virksomhedsform_mapping.update()

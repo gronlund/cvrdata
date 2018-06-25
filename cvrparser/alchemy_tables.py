@@ -138,9 +138,21 @@ class Attributter(Base):
     sidstopdateret = Column(DateTime, nullable=True)
 
 
+# class Branche(Base):
+#     __tablename__ = 'Branche'
+#     branchekode = Column(Integer, primary_key=True)
+#     branchetekst = Column(String(255, 'utf8mb4_bin'))
+
 class Branche(Base):
     __tablename__ = 'Branche'
-    branchekode = Column(Integer, primary_key=True)
+    __table_args__ = (
+        Index('branche_index',
+              'branchekode',
+              'branchetekst',
+              unique=True),
+    )
+    brancheid = Column(Integer, primary_key=True)
+    branchekode = Column(Integer, nullable=False)
     branchetekst = Column(String(255, 'utf8mb4_bin'))
 
 
@@ -415,15 +427,21 @@ class CreateDatabase(object):
         org_hovedtype = Index('orgnavn_hovedtype', Organisation.hovedtype, Organisation.navn)
         enheds_org_index = Index('enheds_org_index',
                                  Enhedsrelation.enhedsnummer_organisation)
-        query_indexes = [# attributter_type_index,
+        branchekode_index = Index('branchekode_index',
+                                 Branche.branchekode
+                                 )
+        branchetekst_index = Index('branchetekst_index',
+                                   Branche.branchetekst
+                                   )
+        # attributter_type_index,
                          # attributter_value_index,
-                         enheds_org_index,
                          # enheds_vaerdi_index,
                          # enheds_vaerdinavn_index,
                          # org_navn,
                          # org_hovedtype,
                          # spalt_org,
-                         update_type_index,
+        query_indexes = [enheds_org_index, update_type_index,
+                         branchekode_index, branchetekst_index
                          ]
         for index in query_indexes:
             print('Creating index', index.name)
@@ -439,7 +457,6 @@ class CreateDatabase(object):
                                     Enhedsrelation.vaerdi)  # text index
         attributter_value_index = Index('attributter_value_index',
                                         Attributter.vaerdi)
-
         pass
 
 

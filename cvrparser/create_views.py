@@ -57,11 +57,16 @@ def create_views():
     create_virk_kredit_status_view(db)
     create_virk_name_view(db)
     create_virk_attributter(db)
+    create_virk_kontakt_view(db)
     create_relation_view(db)
+    create_virk_livsforloeb(db)
     db = alchemy_tables.DBModel()
     create_board_view(db)
     create_direct_owner_view(db)
     create_real_owner_view(db)
+    create_stifter_view(db)
+    create_revision_view(db)
+    create_direktion_view(db)
 
 
 def create_branche_view(db):
@@ -72,11 +77,13 @@ def create_branche_view(db):
     vs = alchemy_tables.Virksomhed
     virk_branche_query = select([upd.enhedsnummer,
                                  vs.cvrnummer,
-                                 upd.kode.label('branchekode'),
+                                 branche.brancheid,
+                                 branche.branchekode,
                                  branche.branchetekst,
-                                 upd.gyldigfra, upd.gyldigtil,
+                                 upd.gyldigfra,
+                                 upd.gyldigtil,
                                  upd.sidstopdateret]).\
-        where(branche.branchekode == upd.kode).\
+        where(branche.brancheid == upd.kode).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype == 'hovedbranche')
     create_view(view_name, virk_branche_query, db)
@@ -91,13 +98,15 @@ def create_bibranche_view(db):
     virk_branche_query = select([upd.enhedsnummer,
                                  vs.cvrnummer,
                                  upd.felttype,
-                                 upd.kode.label('branchekode'),
+                                 branche.brancheid,
+                                 branche.branchekode,
                                  branche.branchetekst,
-                                 upd.gyldigfra, upd.gyldigtil,
+                                 upd.gyldigfra,
+                                 upd.gyldigtil,
                                  upd.sidstopdateret]).\
-        where(branche.branchekode == upd.kode).\
+        where(branche.brancheid == upd.kode).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
-        where(upd.felttype.in_(['hovedbranche, bibranche1', 'bibranche2', 'bibranche3']))
+        where(upd.felttype.in_(['hovedbranche', 'bibranche1', 'bibranche2', 'bibranche3']))
     create_view(view_name, virk_branche_query, db)
 
 
@@ -110,7 +119,7 @@ def create_virk_kontakt_view(db):
     virk_branche_query = select([upd.enhedsnummer,
                                  vs.cvrnummer,
                                  upd.felttype,
-                                 upd.kode.label('branchekode'),
+                                 upd.kode.label('kontaktid'),
                                  kontakt.kontaktoplysning,
                                  upd.gyldigfra, upd.gyldigtil,
                                  upd.sidstopdateret]).\
@@ -140,6 +149,40 @@ def create_relation_view(db):
     create_view(view_name, virk_relation_query, db)
 
 
+def create_revision_view(db):
+    org = alchemy_tables.Organisation
+    er = alchemy_tables.Enhedsrelation
+    view_name = 'revisor'
+    query = select([er.updateid, org.hovedtype,
+                    org.navn.label('orgnavn'),
+                    er.enhedsnummer_deltager.label('revisor'),
+                    er.enhedsnummer_virksomhed,
+                    er.enhedsnummer_organisation,
+                    er.sekvensnr,
+                    er.vaerdinavn, er.vaerdi,
+                    er.gyldigfra, er.gyldigtil]).\
+        where(er.enhedsnummer_organisation == org.enhedsnummer).\
+        where(org.hovedtype == 'REVISION')
+    create_view(view_name, query, db)
+
+
+def create_direktion_view(db):
+    org = alchemy_tables.Organisation
+    er = alchemy_tables.Enhedsrelation
+    view_name = 'direktion'
+    query = select([er.updateid, org.hovedtype,
+                    org.navn.label('orgnavn'),
+                    er.enhedsnummer_deltager,
+                    er.enhedsnummer_virksomhed,
+                    er.enhedsnummer_organisation,
+                    er.sekvensnr,
+                    er.vaerdinavn, er.vaerdi,
+                    er.gyldigfra, er.gyldigtil]).\
+        where(er.enhedsnummer_organisation == org.enhedsnummer).\
+        where(org.navn == 'Direktion')
+    create_view(view_name, query, db)
+
+
 def create_board_view(db):
     """ Create Board Member View """
     view_name = 'bestyrelse'
@@ -158,6 +201,15 @@ def create_direct_owner_view(db):
     cols = rel_table.columns
     owner_relation_query = select(cols).where(cols.hovedtype == 'REGISTER').\
         where(cols.orgnavn == 'EJERREGISTER')
+    create_view(view_name, owner_relation_query, db)
+
+
+def create_stifter_view(db):
+    """ Create view of direct ownerships """
+    view_name = 'stiftere'
+    rel_table = db.tables.relationer
+    cols = rel_table.columns
+    owner_relation_query = select(cols).where(cols.hovedtype == 'STIFTERE')
     create_view(view_name, owner_relation_query, db)
 
 
@@ -252,6 +304,18 @@ def create_virk_name_view(db):
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype.in_(['navn', 'binavn'])).\
         where(upd.kode==navn.navnid)
+    create_view(view_name, query, db)
+
+
+def create_virk_livsforloeb(db):
+    view_name = 'virk_livsforloeb'
+    lvs = alchemy_tables.Livsforloeb
+    vs = alchemy_tables.Virksomhed
+    query = select([vs.enhedsnummer,
+                    vs.cvrnummer,
+                    lvs.gyldigfra,
+                    lvs.gyldigtil, lvs.sidstopdateret]).\
+        where(lvs.enhedsnummer == vs.enhedsnummer)
     create_view(view_name, query, db)
 
 

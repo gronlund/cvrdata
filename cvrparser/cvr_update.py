@@ -4,7 +4,7 @@ import logging
 import cProfile
 import pstats
 import io
-from .elastic_cvr_extract import CvrConnection
+from .elastic_cvr_extract import CvrConnection, test_producer
 from . import cvr_makedb
 from . import setup_database_connection
 
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     parser.add_argument('-threading', default=False, dest='threading',
                         action='store_true')
 
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig(level=logging.INFO)
     args = parser.parse_args()
     setup_database_connection()
     # config = db_setup.get_config()
@@ -164,6 +164,7 @@ if __name__ == '__main__':
         fill_dawa()
     cvr = CvrConnection(update_address=args.enable_add)
     if args.small_test:
+        logging.basicConfig(level=logging.INFO)
         info_print('Running small test')
         run_small_test(cvr)
     if args.delete_test:
@@ -190,12 +191,5 @@ if __name__ == '__main__':
         print(s.getvalue())
         print('something')
     if args.threading:
-        import time
-        t0 = time.time()
-        # a = cvr.get_update_list()
-        t1 = time.time()
-        b = cvr.get_update_lists_threaded()
-        t2 = time.time()
-        #print('non-threaded', t1-t0, 'threaded', t2-t1)
-        print('threaded', t2-t1)
-        # assert a == b, 'dicts differ, hmmm am i just late'
+        # warnings.simplefilter("ignore")
+        test_producer()

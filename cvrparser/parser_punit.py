@@ -43,10 +43,6 @@ class PenhedParserFactory(object):
         vp = fp.ParserList()
 
         # Direct maps
-        hovedbranche = ('hovedbranche', 'branchekode', 'hovedbranche')
-        bibranche1 = ('bibranche1', 'branchekode', 'bibranche1')
-        bibranche2 = ('bibranche2', 'branchekode', 'bibranche2')
-        bibranche3 = ('bibranche3', 'branchekode', 'bibranche3')
         virk_relation = ('virksomhedsrelation', 'cvrNummer', 'penhed')
         # navn, binavn
         navn_mapping = self.key_store.get_name_mapping()
@@ -60,28 +56,25 @@ class PenhedParserFactory(object):
         # telefaxnummer
         fax = ('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping)
 
-        UpdateParser = fp.UploadMappedUpdates()
-        for item in [hovedbranche, bibranche1, bibranche2, bibranche3]:
-            UpdateParser.add_mapping(fp.UpdateMapping(*item))
+        update_parser = fp.UploadMappedUpdates()
+        # for item in [hovedbranche, bibranche1, bibranche2, bibranche3]:
+        #     UpdateParser.add_mapping(fp.UpdateMapping(*item))
         for item in [navne, epost, tlf, fax]:
-            UpdateParser.add_mapping(fp.UpdateMapping(*item))
-        vp.add_listener(UpdateParser)
-        vp.add_listener(parser_organisation.CompanyOrganisationParser())
+            update_parser.add_mapping(fp.UpdateMapping(*item))
+        branche_mapping = self.key_store.get_branche_mapping()
+        hovedbranche = fp.UpdateMapping(json_field='hovedbranche', key=('branchekode', 'branchetekst'),
+                                        field_type='hovedbranche', field_map=branche_mapping)
+        bibranche1 = fp.UpdateMapping(json_field='bibranche1', key=('branchekode', 'branchetekst'),
+                                        field_type='bibranche1', field_map=branche_mapping)
+        bibranche2 = fp.UpdateMapping(json_field='bibranche2', key=('branchekode', 'branchetekst'),
+                                        field_type='bibranche2', field_map=branche_mapping)
+        bibranche3 = fp.UpdateMapping(json_field='bibranche3', key=('branchekode', 'branchetekst'),
+                                        field_type='bibranche3', field_map=branche_mapping)
+        update_parser.add_mapping(hovedbranche)
+        update_parser.add_mapping(bibranche1)
+        update_parser.add_mapping(bibranche2)
+        update_parser.add_mapping(bibranche3)
 
-        # vp.add_listener(fp.UploadTimeDirect('hovedbranche', 'branchekode', 'hovedbranche'))
-        # vp.add_listener(fp.UploadTimeDirect('bibranche1', 'branchekode', 'bibranche1'))
-        # vp.add_listener(fp.UploadTimeDirect('bibranche2', 'branchekode', 'bibranche2'))
-        # vp.add_listener(fp.UploadTimeDirect('bibranche3', 'branchekode', 'bibranche3'))
-        # vp.add_listener(fp.UploadTimeDirect('virksomhedsrelation', 'cvrNummer', 'penhed'))
-        # # navn, binavn
-        # navn_mapping = self.key_store.get_name_mapping()
-        # vp.add_listener(fp.UploadTimeMap('navne', 'navn', 'navn', navn_mapping))
-        # # kontaktinfo
-        # kontakt_mapping = self.key_store.get_kontakt_mapping()
-        # # elektroniskpost
-        # vp.add_listener(fp.UploadTimeMap('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', kontakt_mapping))
-        # # telefonnummer
-        # vp.add_listener(fp.UploadTimeMap('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping))
-        # # telefaxnummer
-        # vp.add_listener(fp.UploadTimeMap('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping))
+        vp.add_listener(update_parser)
+        vp.add_listener(parser_organisation.CompanyOrganisationParser())
         return vp
