@@ -78,7 +78,7 @@ class CvrConnection(object):
         self.person_type = 'deltager'
         self.user = config['cvr_user']
         self.password = config['cvr_passwd']
-        self.datapath = config['data_path']
+        # self.datapath = config['data_path']
         self.update_batch_size = 64
         self.update_address = update_address
         self.address_parser_factory = data_scanner.AddressParserFactory()
@@ -94,7 +94,7 @@ class CvrConnection(object):
                                             month=1,
                                             day=1,
                                             tzinfo=pytz.utc)
-        self.data_file = os.path.join(self.datapath, 'cvr_all.json')
+        # self.data_file = os.path.join(self.datapath, 'cvr_all.json')
 
     def search_field_val(self, field, value, size=10):
         search = Search(using=self.elastic_client, index=self.index)
@@ -186,7 +186,7 @@ class CvrConnection(object):
         str: filename, datetime: download time, bool: new download or use old file
         """
         print('Download Data Write to File - DEPRECATED')
-        filename = os.path.join(self.datapath, 'cvr_update.json')
+        filename = os.path.join('/data/cvr_update.json')
         if os.path.exists(filename):
             "filename exists {0} overwriting".format(filename)
             os.remove(filename)
