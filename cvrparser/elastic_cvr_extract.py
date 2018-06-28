@@ -1,4 +1,5 @@
 from elasticsearch import Elasticsearch
+import elasticsearch_dsl
 from elasticsearch_dsl import Search
 from collections import namedtuple
 import datetime
@@ -563,6 +564,20 @@ def update_time_worker(args):
     return _type, type_dict
 
 
+def retry_generator(g):
+    failed = 0
+    while True:
+        try:
+            yield next(g)
+        except StopIteration:
+            return
+        except Exception as e:
+            failed += 1
+            print(e)
+            if failed > 100:
+                raise
+
+
 def cvr_update_producer(queue, lock):
     """ Producer function that places data to be inserted on the Queue
 
@@ -579,14 +594,16 @@ def cvr_update_producer(queue, lock):
         dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=CvrConnection.dummy_date)
         params = {'scroll': cvr.elastic_search_scroll_time, 'size': cvr.elastic_search_scan_size}
         search = Search(using=cvr.elastic_client, index=cvr.index).query('match_all').params(**params)
+        # search = Search(using=cvr.elastic_client, index=cvr.index).query(elasticsearch_dsl.query.MatchAll()).params(**params)
+
         generator = search.scan()
-        for i, obj in enumerate(generator):
+        for i, obj in enumerate(retry_generator(generator)):
             try:
                 dat = obj.to_dict()
                 keys = dat.keys()
                 dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
                 if len(dict_type_set) != 1:
-                    add_error('BAD DICT DOWNLOADED \n{0}'.format(dat))
+                    add_error('BAD DICT DOWNLOADED \n{0}'.format(dat), dict_type_set)
                     continue
                 dict_type = dict_type_set.pop()
                 dat = dat[dict_type]
@@ -615,10 +632,11 @@ def cvr_update_producer(queue, lock):
                 # queue.put(cvr.cvr_sentinel)
                 # break
     except Exception as e:
-        print('*** generator error ***', e)
+        print('*** generator error ***')
+        print(e)
+        print(type(e))
         print(cvr, dummy, params, search, generator)
-        import pdb
-        pdb.set_trace()
+        raise
 
     # Synchronize access to the console
     with lock:
@@ -638,7 +656,7 @@ def test_producer():
         def __init__(self):
             self.counter = {}
 
-        def put(self, obj, timeout):
+        def put(self, obj, timeout=None):
             dict_type = obj[0]
             if dict_type in self.counter:
                 self.counter[dict_type] += 1
