@@ -605,20 +605,20 @@ def cvr_update_producer(queue, lock):
                         except Exception as e:
                             print('Producer timeout failed - retrying', repeat, e, dict_type, dat)
             except Exception as e:
-                print('Producer Exception: ', e, i)
+                print('Producer Exception: ', e, i, obj)
                 print('continue producer')
-                import pdb
-                pdb.set_trace()
                 print(obj)
             if ((i+1) % 10000) == 0:
                 with lock:
-                    print('{0} objects parsed and inserted into queue'.format(i, ))
+                    print('{0} objects parsed and inserted into queue'.format(i))
                     # print('test break')
                 # queue.put(cvr.cvr_sentinel)
                 # break
     except Exception as e:
         print('*** generator error ***', e)
-
+        print(cvr, dummy, params, search, generator)
+        import pdb
+        pdb.set_trace()
 
     # Synchronize access to the console
     with lock:
