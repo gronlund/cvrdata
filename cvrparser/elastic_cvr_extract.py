@@ -85,7 +85,7 @@ class CvrConnection(object):
         self.address_parser_factory = data_scanner.AddressParserFactory()
         # self.ElasticParams = [self.url, (self.user, self.password), 60, 10, True]
         self.elastic_client = create_elastic_connection(self.url, (self.user, self.password))
-        self.elastic_search_scan_size = 256
+        self.elastic_search_scan_size = 512
         self.elastic_search_scroll_time = u'20m'
         # max number of updates to download without scan scroll
         self.max_download_size = 200000

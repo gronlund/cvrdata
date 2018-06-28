@@ -139,7 +139,6 @@ if __name__ == '__main__':
     parser.add_argument('-threading', default=False, dest='threading',
                         action='store_true')
 
-    # logging.basicConfig(level=logging.INFO)
     args = parser.parse_args()
     setup_database_connection()
     # config = db_setup.get_config()
@@ -192,4 +191,5 @@ if __name__ == '__main__':
         print('something')
     if args.threading:
         # warnings.simplefilter("ignore")
+        logging.basicConfig(level=logging.INFO)
         test_producer()
