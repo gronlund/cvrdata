@@ -638,7 +638,7 @@ def test_producer():
         def __init__(self):
             self.counter = {}
 
-        def put(self, obj):
+        def put(self, obj, timeout):
             dict_type = obj[0]
             if dict_type in self.counter:
                 self.counter[dict_type] += 1
