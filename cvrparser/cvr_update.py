@@ -192,4 +192,6 @@ if __name__ == '__main__':
     if args.threading:
         # warnings.simplefilter("ignore")
         logging.basicConfig(level=logging.INFO)
+        # logging.getLogger('elasticsearch').setLevel(logging.DEBUG)
+        # logging.getLogger('urllib3').setLevel(logging.DEBUG)
         test_producer()

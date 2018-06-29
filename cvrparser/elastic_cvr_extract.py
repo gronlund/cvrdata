@@ -48,7 +48,8 @@ def create_elastic_connection(url, authentication, timeout=60, max_retries=10, r
                          http_auth=authentication,
                          timeout=timeout,
                          max_retries=max_retries,
-                         retry_on_timeout=retry)
+                         retry_on_timeout=retry,
+                         http_compress=True)
 
 
 class CvrConnection(object):
@@ -85,7 +86,8 @@ class CvrConnection(object):
         self.address_parser_factory = data_scanner.AddressParserFactory()
         # self.ElasticParams = [self.url, (self.user, self.password), 60, 10, True]
         self.elastic_client = create_elastic_connection(self.url, (self.user, self.password))
-        self.elastic_search_scan_size = 512
+        print('Elastic Search Client:', self.elastic_client.info())
+        self.elastic_search_scan_size = 128
         self.elastic_search_scroll_time = u'20m'
         # max number of updates to download without scan scroll
         self.max_download_size = 200000
@@ -574,7 +576,7 @@ def retry_generator(g):
         except Exception as e:
             failed += 1
             print(e)
-            if failed > 100:
+            if failed > 10:
                 raise
 
 
