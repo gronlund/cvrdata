@@ -12,8 +12,8 @@ setup(
     install_requires=[
         'SQLAlchemy>=1.1.14',
         'chardet>=3.0.4',
-        'elasticsearch1>=1.10.0',
-        'elasticsearch1-dsl>=0.0.12',
+        'elasticsearch',
+        'elasticsearch-dsl',
         'idna>=2.6',
         'mysqlclient>=1.3.12',
         'numpy>=1.13.3',

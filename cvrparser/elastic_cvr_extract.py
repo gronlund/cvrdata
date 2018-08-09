@@ -605,7 +605,7 @@ def cvr_update_producer(queue, lock):
                 keys = dat.keys()
                 dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
                 if len(dict_type_set) != 1:
-                    add_error('BAD DICT DOWNLOADED \n{0}'.format(dat), dict_type_set)
+                    add_error('BAD DICT DOWNLOADED \n{0} {1}'.format(dat, dict_type_set))
                     continue
                 dict_type = dict_type_set.pop()
                 dat = dat[dict_type]
@@ -639,12 +639,12 @@ def cvr_update_producer(queue, lock):
         print(type(e))
         print(cvr, dummy, params, search, generator)
         raise
-
+    finally:
+        queue.put(cvr.cvr_sentinel)
     # Synchronize access to the console
     with lock:
         print('objects parsing done')
 
-    queue.put(cvr.cvr_sentinel)
     t1 = time.time()
     with lock:
         print('Producer Done. Exiting...{0}'.format(os.getpid()))
