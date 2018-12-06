@@ -144,7 +144,10 @@ def create_relation_view(db):
                                   er.enhedsnummer_organisation,
                                   er.sekvensnr,
                                   er.vaerdinavn, er.vaerdi,
-                                  er.gyldigfra, er.gyldigtil]).\
+                                  er.gyldigfra,
+                                  er.gyldigtil,
+                                  er.sidstopdateret
+                                  ]).\
         where(er.enhedsnummer_organisation == org.enhedsnummer)
     create_view(view_name, virk_relation_query, db)
 
@@ -160,7 +163,9 @@ def create_revision_view(db):
                     er.enhedsnummer_organisation,
                     er.sekvensnr,
                     er.vaerdinavn, er.vaerdi,
-                    er.gyldigfra, er.gyldigtil]).\
+                    er.gyldigfra,
+                    er.gyldigtil,
+                    er.sidstopdateret]).\
         where(er.enhedsnummer_organisation == org.enhedsnummer).\
         where(org.hovedtype == 'REVISION')
     create_view(view_name, query, db)
@@ -176,8 +181,11 @@ def create_direktion_view(db):
                     er.enhedsnummer_virksomhed,
                     er.enhedsnummer_organisation,
                     er.sekvensnr,
-                    er.vaerdinavn, er.vaerdi,
-                    er.gyldigfra, er.gyldigtil]).\
+                    er.vaerdinavn,
+                    er.vaerdi,
+                    er.gyldigfra,
+                    er.gyldigtil,
+                    er.sidstopdateret]).\
         where(er.enhedsnummer_organisation == org.enhedsnummer).\
         where(org.navn == 'Direktion')
     create_view(view_name, query, db)
@@ -267,7 +275,8 @@ def create_virk_status_view(db):
                     upd.kode.label('virksomhedsstatuskode'),
                     stat.virksomhedsstatus,
                     upd.gyldigfra,
-                    upd.gyldigtil, upd.sidstopdateret]).\
+                    upd.gyldigtil,
+                    upd.sidstopdateret]).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype == 'virksomhedsstatus').\
         where(stat.virksomhedsstatusid==upd.kode)
@@ -284,7 +293,8 @@ def create_virk_attributter(db):
                     att.vaerditype,
                     att.sekvensnr,
                     att.gyldigfra,
-                    att.gyldigtil, att.sidstopdateret]).\
+                    att.gyldigtil,
+                    att.sidstopdateret]).\
         where(att.enhedsnummer == vs.enhedsnummer)
     create_view('virk_attributter', query, db)
 
@@ -300,7 +310,8 @@ def create_virk_name_view(db):
                     upd.kode.label('navnid'),
                     navn.navn,
                     upd.gyldigfra,
-                    upd.gyldigtil, upd.sidstopdateret]).\
+                    upd.gyldigtil,
+                    upd.sidstopdateret]).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype.in_(['navn', 'binavn'])).\
         where(upd.kode==navn.navnid)
@@ -314,7 +325,8 @@ def create_virk_livsforloeb(db):
     query = select([vs.enhedsnummer,
                     vs.cvrnummer,
                     lvs.gyldigfra,
-                    lvs.gyldigtil, lvs.sidstopdateret]).\
+                    lvs.gyldigtil,
+                    lvs.sidstopdateret]).\
         where(lvs.enhedsnummer == vs.enhedsnummer)
     create_view(view_name, query, db)
 
@@ -346,7 +358,8 @@ def create_person_name_view(db):
                     upd.kode.label('navnid'),
                     navn.navn,
                     upd.gyldigfra,
-                    upd.gyldigtil, upd.sidstopdateret]).\
+                    upd.gyldigtil,
+                    upd.sidstopdateret]).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype == 'navn').\
         where(upd.kode==navn.navnid)

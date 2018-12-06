@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 
 config_path = Path(__file__).parent / 'config.ini'
-
+print('config path:', config_path)
 _engine = None
 _session = None
 

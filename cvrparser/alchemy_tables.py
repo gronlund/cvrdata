@@ -153,7 +153,7 @@ class Branche(Base):
     )
     brancheid = Column(Integer, primary_key=True)
     branchekode = Column(Integer, nullable=False)
-    branchetekst = Column(String(255, 'utf8mb4_bin'))
+    branchetekst = Column(String(160, 'utf8mb4_bin'))
 
 
 class Enhedsrelation(Base):
@@ -402,8 +402,13 @@ class CreateDatabase(object):
         # base.metadata.create_all(engine, tables=[x.__table__ for x in tables])
         print('Create Tables')
         for x in self.cvr_tables:
-            print('Creating Table {0}'.format(x.__tablename__))
-            x.__table__.create(engine)
+            try:
+                print('Creating Table {0}'.format(x.__tablename__))
+                x.__table__.create(engine)
+            except Exception as e:
+                print(f'Create Table Exception: {x.__tablename__}')
+                print('Probably already exists')
+                print(e)
 
     def create_query_indexes(self):
         """ Create Indexes used for queries
@@ -518,7 +523,12 @@ class CreateDatabase(object):
                    ]
         for index in indexes:
             print('Creating index', index.name)
-            index.create(engine)
+            try:
+                index.create(engine)
+            except Exception as e:
+                print(f'Index construction failed {index.name}')
+                print('Probably already exists')
+                print(e)
 
     def create_views(self):
         """ create database views

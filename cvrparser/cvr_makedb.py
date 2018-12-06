@@ -71,5 +71,6 @@ class MakeCvrDatabase(object):
                             for k, v in row.items() if k in extract)
                 db.insert(dat)
                 if (i % 1000) == 0:
-                    print('Adresses inserted: {0}'.format(i))
+                    print('Commiting 1000, Total Adresses inserted: {0}'.format(i))
+                    db.commit()
             db.commit()

@@ -20,7 +20,10 @@ class Commands:
             crdb.create_views()
         if create_query_indexes:
             crdb.create_query_indexes()
-
+        if not (create_query_indexes or create_views or create_tables):
+            print('No command option given.')
+            print('-t create_tables\n-v create views\n-i create indicesx')
+    
     @staticmethod
     def update(use_address, resume):
         interactive_ensure_config_exists()

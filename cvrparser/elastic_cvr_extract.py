@@ -38,6 +38,9 @@ def update_all_mp(workers=1):
         c.daemon = True
         c.start()
     prod.join()
+    for i in range(workers):
+        queue.put(CvrConnection.cvr_sentinel)
+
     for c in consumers:
         c.join()
     queue.close()
@@ -638,9 +641,7 @@ def cvr_update_producer(queue, lock):
         print(e)
         print(type(e))
         print(cvr, dummy, params, search, generator)
-        raise
-    finally:
-        queue.put(cvr.cvr_sentinel)
+        return
     # Synchronize access to the console
     with lock:
         print('objects parsing done')
@@ -704,7 +705,7 @@ def cvr_update_consumer(queue, lock):
                 print('consumer timeout reached - retrying', e)
         try:  # move this
             if obj == cvr.cvr_sentinel:
-                queue.put(cvr.cvr_sentinel)
+                print('sentinel found - Thats it im out of here')
                 break
             assert len(obj) == 2, 'obj not length 2 - should be tuple of length 2'
             dict_type = obj[0]
