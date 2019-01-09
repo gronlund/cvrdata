@@ -406,7 +406,7 @@ class CreateDatabase(object):
                 print('Creating Table {0}'.format(x.__tablename__))
                 x.__table__.create(engine)
             except Exception as e:
-                print(f'Create Table Exception: {x.__tablename__}')
+                print('Create Table Exception: ', x.__tablename__)
                 print('Probably already exists')
                 print(e)
 
@@ -526,7 +526,7 @@ class CreateDatabase(object):
             try:
                 index.create(engine)
             except Exception as e:
-                print(f'Index construction failed {index.name}')
+                print('Index construction failed', index.name)
                 print('Probably already exists')
                 print(e)
 
