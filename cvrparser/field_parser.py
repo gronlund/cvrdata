@@ -346,7 +346,8 @@ def get_upload_employment_year():
 def get_upload_employment_quarter():
     """ Simple parser for quarterly employment intervals """
     table = alchemy_tables.KvartalsbeskaeftigelseInterval
-    kvar_keys = ['aar', 'kvartal', 'antalAarsvaerk', 'antalAnsatte']
+    
+    kvar_keys = ['aar', 'kvartal', 'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte']
     kvar_field = 'kvartalsbeskaeftigelse'
     kvar_columns = [table.enhedsnummer, table.aar, table.kvartal, table.aarsvaerk,
                     table.ansatte]
