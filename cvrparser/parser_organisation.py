@@ -8,8 +8,8 @@ from . import alchemy_tables
 def parse_udggaende(spalt, vaerdi):
     keys = ['udgaaende', 'indgaaende']
     if (len(spalt['udgaaende']) > 0) and (len(spalt['indgaaende']) > 0) and (spalt['udgaaende'] != spalt['indgaaende']):
-        print('in != ud')
-        pdb.set_trace()
+        print('in != ud', 'lets do something anyways')
+        
     for key in keys:
         if len(spalt[key]) == 0:
             continue

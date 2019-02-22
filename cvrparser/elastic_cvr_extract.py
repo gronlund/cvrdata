@@ -1,5 +1,5 @@
 from elasticsearch import Elasticsearch
-import elasticsearch_dsl
+# import elasticsearch_dsl
 from elasticsearch_dsl import Search
 from collections import namedtuple
 import datetime
@@ -18,6 +18,7 @@ from .cvr_download import download_all_dicts_to_file
 from multiprocessing.pool import Pool
 import multiprocessing
 import time
+import sys
 
 
 def update_all_mp(workers=1):
@@ -228,8 +229,30 @@ class CvrConnection(object):
         data_list = self.get_entity(enh)
         dicts = {x: list() for x in self.source_keymap.values()}
         for data_dict in data_list:
-            dict_type = data_dict['_type']
-            key = self.source_keymap[dict_type]
+            # dict_type = data_dict['_type']
+            # print('data dict', data_dict)
+            # import pdb
+            # pdb.set_trace()
+            #dict_type = data_dict['_type']
+            keys = data_dict['_source'].keys()
+            dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
+            if len(dict_type_set) != 1:
+                import pdb
+                pdb.set_trace()
+                add_error('BAD DICT DOWNLOADED {0}'.format(data_dict))
+                continue
+            key = dict_type_set.pop()
+            # if dict_type not in self.source_keymap:
+            #     dict_type = data_dict['_source'].keys()
+            #     import pdb
+            #     pdb.set_trace()
+            #     if data_dict['_source']['enhedsType'] == 'VIRKSOMHED':
+            #         dicts['Vrvirksomhed'].append(data_dict['_source'])
+            #     else:
+            #         import pdb
+            #         pdb.set_trace()
+            #         assert False
+            # key = self.source_keymap[dict_type]
             dicts[key].append(data_dict['_source'][key])
             if len(dicts[key]) >= self.update_batch_size:
                 self.update(dicts[key], key)
@@ -699,7 +722,7 @@ def cvr_update_consumer(queue, lock):
         # try:
         while True:
             try:
-                obj = queue.get(timeout=30)
+                obj = queue.get(timeout=60)
                 break
             except Exception as e:
                 print('consumer timeout reached - retrying', e)
@@ -715,10 +738,17 @@ def cvr_update_consumer(queue, lock):
                 cvr.update(dicts[dict_type], dict_type)
                 dicts[dict_type].clear()
         except Exception as e:
-            print('Exception  on - restart')
-            print(obj)
-            print(e)
-            raise e
+            with lock:
+                print('Exception in consumer:', os.getpid(), '\n', e)
+            print('insert one by one')            
+            for enh_type, _dicts in dicts.items():
+                for one_dict in _dicts:
+                    print('inserting ', one_dict['enhedsNummer'])
+                    try:
+                        cvr.update([one_dict], enh_type)
+                    except Exception as e:
+                        print('one insert error\n', e)
+                        print('enh failed', one_dict['enhedsNummer'], file=sys.stderr)
         # except Exception as e:
         #     print('Consumer exception', e)
         #     import pdb
