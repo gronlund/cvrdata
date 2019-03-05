@@ -17,19 +17,20 @@ from . import data_scanner
 from .cvr_download import download_all_dicts_to_file
 from multiprocessing.pool import Pool
 import multiprocessing
+import logging
 import time
 import sys
 
 
 def update_all_mp(workers=1):
-    multiprocessing.log_to_stderr()
-    logger = multiprocessing.get_logger()
+    # https://docs.python.org/3/howto/logging-cookbook.html
+    #multiprocessing.log_to_stderr()
+    logger = logging.getLogger('cvrparser')
     logger.setLevel(logging.INFO)
+    # add two handlers here
     lock = multiprocessing.Lock()
+    
     queue = multiprocessing.Queue() # maxsize=1000*1000*20)
-    # cvr_update_producer(queue, lock)
-    # cvr_update_consumer(queue, lock)
-    # assert False
     prod = multiprocessing.Process(target=cvr_update_producer, args=(queue, lock))
     # prod.daemon = True
     prod.start()
@@ -39,13 +40,19 @@ def update_all_mp(workers=1):
         c.daemon = True
         c.start()
     prod.join()
+    ### PRINT HERE
+    with lock:
+        logger.info('Producer Done - Adding Sentinels')
     for i in range(workers):
+        logger.info('Adding sentinel')
         queue.put(CvrConnection.cvr_sentinel)
 
     for c in consumers:
+        logger.info('waiting for consumer')
         c.join()
+    logger.info('all consumers done')
     queue.close()
-
+    
 
 def create_elastic_connection(url, authentication, timeout=60, max_retries=10, retry=True):
     return Elasticsearch(url,
@@ -63,7 +70,7 @@ class CvrConnection(object):
                      'deltager': 'Vrdeltagerperson',
                      'produktionsenhed': 'VrproduktionsEnhed'}
     update_info = namedtuple('update_info', ['samtid', 'sidstopdateret'])
-    cvr_sentinel = 'SENTINEL'
+    cvr_sentinel = 'CVR_SENTINEL'
 
     def __init__(self, update_address=False):
         """ Setup everything needed for elasticsearch
@@ -106,7 +113,6 @@ class CvrConnection(object):
     def search_field_val(self, field, value, size=10):
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('match', **{field: value}).extra(size=size)
-        logging.info('field value search {0}'.format(search.to_dict()))
         response = search.execute()
         hits = response.hits.hits
         return hits
@@ -121,7 +127,6 @@ class CvrConnection(object):
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('ids', values=enh).extra(size=len(enh))
         # search = search.query('match', values=enh)
-        logging.info('enhedsnummer search in cvr: {0}'.format(search.to_dict()))
         response = search.execute()
         hits = response.hits.hits
         return hits
@@ -136,7 +141,6 @@ class CvrConnection(object):
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('match', _type=self.penhed_type)
         search = search.query('match', **{'VrproduktionsEnhed.pNummer': pnummer})
-        logging.info(('pnummer search: '.format(search.to_dict())))
         response = search.execute()
         hits = response.hits.hits
         return hits
@@ -149,7 +153,6 @@ class CvrConnection(object):
         """
         search = Search(using=self.elastic_client, index=self.index)
         search = search.query('match', **{'Vrvirksomhed.cvrNummer': cvrnummer})
-        logging.info('cvr id search: {0}'.format(search.to_dict()))
         response = search.execute()
         hits = response.hits.hits
         return hits
@@ -287,7 +290,6 @@ class CvrConnection(object):
         enh: list of company ids (enhedsnummer)
         _type: object type to delete
         """
-        # logging.info('Start delete')
         delete_table_models = [alchemy_tables.Update,
                                alchemy_tables.Adresseupdate,
                                alchemy_tables.Attributter,
@@ -337,23 +339,6 @@ class CvrConnection(object):
         for t in threads:
             t.join()
 
-        # session = create_session()
-        # try:
-        #     for table_model in delete_table_models:
-        #         session.query(table_model).filter(table_model.enhedsnummer.in_(enh)).delete(synchronize_session=False)
-        #     if _type == 'Vrvirksomhed':
-        #         session.query(alchemy_tables.Enhedsrelation).\
-        #             filter(alchemy_tables.Enhedsrelation.enhedsnummer_virksomhed.in_(enh)).\
-        #             delete(synchronize_session=False)
-        #     session.commit()
-        # except Exception as e:
-        #     print('Delete Exception:', enh)
-        #     print(e)
-        #     session.rollback()
-        #     session.close()
-        #     raise
-        # session.close()
-
     def insert(self, dicts, enh_type):
         """ Insert data from dicts
 
@@ -361,13 +346,10 @@ class CvrConnection(object):
         :param dicts: list of dicts with cvr data (Danish Business Authority)
         :param enh_type: cvr object type
         """
-        # logging.info('start insert')
         data_parser = data_scanner.DataParser(_type=enh_type)
         address_parser = self.address_parser_factory.create_parser(self.update_address)
         data_parser.parse_data(dicts)
-        # logging.info('fixed valued parsed')
         data_parser.parse_dynamic_data(dicts)
-        # logging.info('dynamic data inserted')
         address_parser.parse_address_data(dicts)
         # print('address data inserted/skipped - start static')
         data_parser.parse_static_data(dicts)
@@ -389,7 +371,8 @@ class CvrConnection(object):
         """ Make mapping from entity id to current version
         Add threading to run in parallel to see if that increase speed. Use threadpool instad of concurrent_future
         """
-        logging.info('Make id -> samtId map: units update status map')
+        logger = logging.getLogger('cvrparser')
+        logger.info('Make id -> samtId map: units update status map')
         table_models = [alchemy_tables.Virksomhed, alchemy_tables.Produktion, alchemy_tables.Person]
         enh_samtid_map = {}
 
@@ -406,7 +389,7 @@ class CvrConnection(object):
         for t in threads:
             t.join()
 
-        logging.info('Id map done')
+        logger.info('Id map done')
         return enh_samtid_map
 
     def update_from_mixed_file(self, filename, force=False):
@@ -616,6 +599,7 @@ def cvr_update_producer(queue, lock):
     t0 = time.time()
     with lock:
         print('Starting producer => {}'.format(os.getpid()))
+    
     try:
         cvr = CvrConnection()
         enh_samtid_map = CvrConnection.make_samtid_dict()
@@ -650,20 +634,20 @@ def cvr_update_producer(queue, lock):
                         except Exception as e:
                             print('Producer timeout failed - retrying', repeat, e, dict_type, dat)
             except Exception as e:
-                print('Producer Exception: ', e, i, obj)
-                print('continue producer')
+                print('Producer Exception: ', e, i, obj, file=sys.stderr)
+                print('continue producer', file=sys.stderr)
                 print(obj)
             if ((i+1) % 10000) == 0:
                 with lock:
                     print('{0} objects parsed and inserted into queue'.format(i))
                     # print('test break')
-                # queue.put(cvr.cvr_sentinel)
+                
                 # break
     except Exception as e:
-        print('*** generator error ***')
-        print(e)
-        print(type(e))
-        print(cvr, dummy, params, search, generator)
+        print('*** generator error ***', file=sys.stderr)
+        print(e, file=sys.stderr)
+        print(type(e), file=sys.stderr)
+        print(cvr, dummy, params, search, generator, file=sys.stderr)
         return
     # Synchronize access to the console
     with lock:
@@ -673,7 +657,8 @@ def cvr_update_producer(queue, lock):
     with lock:
         print('Producer Done. Exiting...{0}'.format(os.getpid()))
         print('Producer Time Used:', t1-t0)
-
+    # queue.put(cvr.cvr_sentinel)
+    #    queue.put(cvr.cvr_sentinel)
 
 def test_producer():
     print('test producer')

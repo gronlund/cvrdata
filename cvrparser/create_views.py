@@ -67,6 +67,9 @@ def create_views():
     create_stifter_view(db)
     create_revision_view(db)
     create_direktion_view(db)
+    create_monthly_employment(db)
+    create_quarterly_employment(db)
+    create_yearly_employment(db)
 
 
 def create_branche_view(db):
@@ -314,7 +317,7 @@ def create_virk_name_view(db):
                     upd.sidstopdateret]).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype.in_(['navn', 'binavn'])).\
-        where(upd.kode==navn.navnid)
+        where(upd.kode == navn.navnid)
     create_view(view_name, query, db)
 
 
@@ -329,6 +332,49 @@ def create_virk_livsforloeb(db):
                     lvs.sidstopdateret]).\
         where(lvs.enhedsnummer == vs.enhedsnummer)
     create_view(view_name, query, db)
+
+    
+def create_monthly_employment(db):
+    view_name = 'monthly_employment'
+    lvs = alchemy_tables.MaanedsbeskaeftigelseInterval
+    vs = alchemy_tables.Virksomhed
+    query = select([vs.enhedsnummer,
+                    vs.cvrnummer,
+                    lvs.aar,
+                    lvs.maaned,
+                    lvs.aarsvaerk,
+                    lvs.ansatte]).\
+        where(lvs.enhedsnummer == vs.enhedsnummer)
+    create_view(view_name, query, db)
+
+
+def create_quarterly_employment(db):
+    view_name = 'quarterly_employment'
+    lvs = alchemy_tables.KvartalsbeskaeftigelseInterval
+    vs = alchemy_tables.Virksomhed
+    query = select([vs.enhedsnummer,
+                    vs.cvrnummer,
+                    lvs.aar,
+                    lvs.kvartal,
+                    lvs.aarsvaerk,
+                    lvs.ansatte]).\
+        where(lvs.enhedsnummer == vs.enhedsnummer)
+    create_view(view_name, query, db)
+
+
+def create_yearly_employment(db):
+    view_name = 'yearly_employment'
+    lvs = alchemy_tables.AarsbeskaeftigelseInterval
+    vs = alchemy_tables.Virksomhed
+    query = select([vs.enhedsnummer,
+                    vs.cvrnummer,
+                    lvs.aar,
+                    lvs.aarsvaerk,
+                    lvs.ansatte,
+                    lvs.ansatteinklusivejere]).\
+        where(lvs.enhedsnummer == vs.enhedsnummer)
+    create_view(view_name, query, db)
+
 
 
 def create_virk_kredit_status_view(db):
@@ -345,7 +391,7 @@ def create_virk_kredit_status_view(db):
                     upd.sidstopdateret]).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype == 'status').\
-        where(stat.statusid==upd.kode)
+        where(stat.statusid == upd.kode)
     create_view('virk_status', query, db)
 
 
@@ -362,5 +408,7 @@ def create_person_name_view(db):
                     upd.sidstopdateret]).\
         where(upd.enhedsnummer == vs.enhedsnummer).\
         where(upd.felttype == 'navn').\
-        where(upd.kode==navn.navnid)
+        where(upd.kode == navn.navnid)
     create_view(view_name, query, db)
+
+
