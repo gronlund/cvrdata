@@ -294,9 +294,9 @@ class CvrConnection(object):
                                alchemy_tables.Adresseupdate,
                                alchemy_tables.Attributter,
                                alchemy_tables.Livsforloeb,
-                               alchemy_tables.AarsbeskaeftigelseInterval,
-                               alchemy_tables.KvartalsbeskaeftigelseInterval,
-                               alchemy_tables.MaanedsbeskaeftigelseInterval,
+                               alchemy_tables.Aarsbeskaeftigelse,
+                               alchemy_tables.Kvartalsbeskaeftigelse,
+                               alchemy_tables.Maanedsbeskaeftigelse,
                                alchemy_tables.SpaltningFusion]
         if _type == 'Vrvirksomhed':
             static_table = alchemy_tables.Virksomhed

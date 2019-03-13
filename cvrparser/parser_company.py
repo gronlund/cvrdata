@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from . import field_parser as fp
 from . import parser_organisation
 from . import alchemy_tables
@@ -10,7 +9,8 @@ class UploadStatusTyper(fp.Parser):
     """ Simple class for handling 2D keys for status typer """
     def __init__(self, key_store):
         table_class = alchemy_tables.Statuskode
-        columns = [alchemy_tables.Statuskode.statuskode, alchemy_tables.Statuskode.kreditoplysningskode]
+        self.keys = ['statuskode', 'kreditoplysningkode', 'statustekst', 'kreditoplysningtekst']
+        columns = [table_class.statuskode, table_class.kreditoplysningskode, table_class.statustekst, table_class.kreditoplysningtekst]
         super().__init__(table_class=table_class, columns=columns, keystore=key_store)
         self.keystore = key_store
 
@@ -20,13 +20,15 @@ class UploadStatusTyper(fp.Parser):
             if key in self.keystore or key is None:
                 continue
             self.keystore.add(key)
-            dat = key
+            dat = [z.get(x, 'None') for x in self.keys]
             # dat = (z['statuskode'], z['kreditoplysningkode'])
             self.db.insert((key, dat))
 
 
 class StatusKoderMap(fp.Parser):
-    """ Simple class for parsing statuskoder that is pairs of numbers (statuskode, kreditoplysningskode """
+    """ Simple class for parsing statuskoder that is pairs of numbers (statuskode, kreditoplysningskode) 
+    Now added fields statustekst, kreditoplysningstekst
+    """
 
     def __init__(self):
         table = alchemy_tables.Update
@@ -207,7 +209,6 @@ class VirksomhedParserFactory(object):
         update_parser.add_mapping(bibranche1)
         update_parser.add_mapping(bibranche2)
         update_parser.add_mapping(bibranche3)
-
 
         vp.add_listener(update_parser)
         # navne_parser = parser_organisation.OrganisationNavnParser()

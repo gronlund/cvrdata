@@ -20,8 +20,7 @@ class DBModel(object):
         Base = automap_base(metadata=metadata)
         Base.prepare()
         self.engine = engine
-        self.tables = namedtuple('tables',
-                                 metadata.tables.keys())(*metadata.tables.values())
+        self.tables = namedtuple('tables', metadata.tables.keys())(*metadata.tables.values())
         self.tables_dict = self.tables._asdict()
         self.classes = Base.classes
 
@@ -34,18 +33,40 @@ class Aarsbeskaeftigelse(Base):
     aarsvaerk = Column(Integer)
     ansatte = Column(Integer)
     ansatteinklusivejere = Column(Integer)
+    aarsvaerkinterval = Column(String(40, 'utf8mb4_bin'))
+    ansatteinterval = Column(String(40, 'utf8mb4_bin'))
+    ansatteinklusivejereinterval = Column(String(40, 'utf8mb4_bin'))
+    sidstopdateret = Column(DateTime, nullable=True)
 
 
-class AarsbeskaeftigelseInterval(Base):
-    __tablename__ = 'AarsbeskaeftigelseInterval'
-
+class Kvartalsbeskaeftigelse(Base):
+    __tablename__ = 'Kvartalsbeskaeftigelse'
     enhedsnummer = Column(BigInteger, primary_key=True, nullable=False)
     aar = Column(Integer, primary_key=True, nullable=False)
-    aarsvaerk = Column(String(256, 'utf8mb4_bin'))
-    ansatte = Column(String(256, 'utf8mb4_bin'))
-    ansatteinklusivejere = Column(String(256, 'utf8mb4_bin'))
+    kvartal = Column(Integer, primary_key=True, nullable=False)
+    aarsvaerk = Column(Integer)
+    ansatte = Column(Integer)
+    aarsvaerkinterval = Column(String(40, 'utf8mb4_bin'))
+    ansatteinterval = Column(String(40, 'utf8mb4_bin'))
+    sidstopdateret = Column(DateTime, nullable=True)
+
+    
+class Maanedsbeskaeftigelse(Base):
+    __tablename__ = 'Maanedsbeskaeftigelse'
+    enhedsnummer = Column(BigInteger, primary_key=True, nullable=False)
+    aar = Column(Integer, primary_key=True, nullable=False)
+    maaned = Column(Integer, primary_key=True, nullable=False)
+    aarsvaerk = Column(Integer)
+    ansatte = Column(Integer)
+    aarsvaerkinterval = Column(String(40, 'utf8mb4_bin'))
+    ansatteinterval = Column(String(40, 'utf8mb4_bin'))
+    sidstopdateret = Column(DateTime, nullable=True)
 
 
+
+
+
+    
 class AdresseDawa(Base):
     __tablename__ = 'AdresseDawa'
 
@@ -176,22 +197,6 @@ class Kontaktinfo(Base):
     kontaktoplysning = Column(String(255, 'utf8mb4_bin'), nullable=False, unique=True)
 
 
-class Kvartalsbeskaeftigelse(Base):
-    __tablename__ = 'Kvartalsbeskaeftigelse'
-    enhedsnummer = Column(BigInteger, primary_key=True, nullable=False)
-    aar = Column(Integer, primary_key=True, nullable=False)
-    kvartal = Column(Integer, primary_key=True, nullable=False)
-    aarsvaerk = Column(Integer)
-    ansatte = Column(Integer)
-
-
-class KvartalsbeskaeftigelseInterval(Base):
-    __tablename__ = 'KvartalsbeskaeftigelseInterval'
-    enhedsnummer = Column(BigInteger, primary_key=True, nullable=False)
-    aar = Column(Integer, primary_key=True, nullable=False)
-    kvartal = Column(Integer, primary_key=True, nullable=False)
-    aarsvaerk = Column(String(256, 'utf8mb4_bin'))
-    ansatte = Column(String(256, 'utf8mb4_bin'))
 
 
 class Lastupdated(Base):
@@ -216,24 +221,6 @@ class Livsforloeb(Base):
     gyldigtil = Column(DateTime, nullable=False,
                        server_default=default_end_date)
     sidstopdateret = Column(DateTime, nullable=True)
-
-
-class Maanedsbeskaeftigelse(Base):
-    __tablename__ = 'Maanedsbeskaeftigelse'
-    enhedsnummer = Column(BigInteger, primary_key=True, nullable=False)
-    aar = Column(Integer, primary_key=True, nullable=False)
-    maaned = Column(Integer, primary_key=True, nullable=False)
-    aarsvaerk = Column(Integer)
-    ansatte = Column(Integer)
-
-
-class MaanedsbeskaeftigelseInterval(Base):
-    __tablename__ = 'MaanedsbeskaeftigelseInterval'
-    enhedsnummer = Column(BigInteger, primary_key=True, nullable=False)
-    aar = Column(Integer, primary_key=True, nullable=False)
-    maaned = Column(Integer, primary_key=True, nullable=False)
-    aarsvaerk = Column(String(256, 'utf8mb4_bin'))
-    ansatte = Column(String(256, 'utf8mb4_bin'))
 
 
 class Navne(Base):
@@ -321,7 +308,9 @@ class Statuskode(Base):
     )
     statusid = Column(Integer, primary_key=True)
     statuskode = Column(Integer, nullable=False)
+    statustekst = Column(Text(2**32-1, collation='utf8mb4_bin'), nullable=True)
     kreditoplysningskode = Column(Integer, nullable=False)
+    kreditoplysningtekst = Column(Text(2**32-1, collation='utf8mb4_bin'), nullable=True)
 
 
 class Update(Base):
@@ -373,7 +362,6 @@ class Virksomhedsstatus(Base):
 class CreateDatabase(object):
     def __init__(self):
         self.cvr_tables = [Aarsbeskaeftigelse,
-                           AarsbeskaeftigelseInterval,
                            AdresseDawa,
                            Adresseupdate,
                            Attributter,
@@ -381,10 +369,8 @@ class CreateDatabase(object):
                            Enhedsrelation,
                            Kontaktinfo,
                            Kvartalsbeskaeftigelse,
-                           KvartalsbeskaeftigelseInterval,
                            Livsforloeb,
                            Maanedsbeskaeftigelse,
-                           MaanedsbeskaeftigelseInterval,
                            Navne,
                            Organisation,
                            Person,

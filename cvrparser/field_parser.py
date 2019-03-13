@@ -27,6 +27,11 @@ def get_date(st):
     return res[0], res[1], utc_sidstopdateret
 
 
+def parse_sidst_opdateret(st):
+    utc_sidstopdateret = utc_transform(st['sidstOpdateret']) if st['sidstOpdateret'] is not None else None
+    return utc_sidstopdateret
+
+
 def fast_time_transform(time):
     """ transform strings like 2017-01-29T13:06:04.000+01:00 fast
                                2014-10-02T20:00:00.000Z
@@ -318,6 +323,7 @@ class UploadEmployment(Parser):
     """ Simple class for parsing employment from cvr data file """
 
     def __init__(self, dict_field, keys, table_class, columns):
+        columns.append(table_class.sidstopdateret)
         super().__init__(table_class, columns, keystore=None)
         self.dict_field = dict_field
         self.keys = keys
@@ -328,39 +334,49 @@ class UploadEmployment(Parser):
             # print('Error field missing {0} - {1}'.format(enh, self.dict_field))
             return
         for entry in data[self.dict_field]:
-            dat = tuple([enh] + [entry[x] for x in self.keys])
+            sidstopdateret = parse_sidst_opdateret(entry)
+            dat = tuple([enh] + [entry[x] for x in self.keys] + [sidstopdateret])
             self.db.insert(dat)
 
 
 def get_upload_employment_year():
     """ Simple parser for yearly employment intervals """
-    table = alchemy_tables.AarsbeskaeftigelseInterval
-    aar_columns = [table.enhedsnummer, table.aar, table.aarsvaerk, table.ansatte,
-                   table.ansatteinklusivejere]
+    table = alchemy_tables.Aarsbeskaeftigelse
+    aar_columns = [table.enhedsnummer, table.aar,
+                   table.aarsvaerk, table.ansatte, table.ansatteinklusivejere,
+                   table.aarsvaerkinterval, table.ansatteinterval, table.ansatteinklusivejereinterval]
     aar_field = 'aarsbeskaeftigelse'
-    aar_keys = ['aar', 'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte', 'intervalKodeAntalInklusivEjere']
+    aar_keys = ['aar',
+                'antalAarsvaerk', 'antalAnsatte', 'antalInklusivEjere',
+                'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte', 'intervalKodeAntalInklusivEjere']
     afp = UploadEmployment(aar_field, aar_keys, table, aar_columns)
     return afp
 
 
 def get_upload_employment_quarter():
     """ Simple parser for quarterly employment intervals """
-    table = alchemy_tables.KvartalsbeskaeftigelseInterval
+    table = alchemy_tables.Kvartalsbeskaeftigelse
     
-    kvar_keys = ['aar', 'kvartal', 'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte']
+    kvar_keys = ['aar', 'kvartal',
+                 'antalAarsvaerk', 'antalAnsatte',
+                 'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte']
     kvar_field = 'kvartalsbeskaeftigelse'
-    kvar_columns = [table.enhedsnummer, table.aar, table.kvartal, table.aarsvaerk,
-                    table.ansatte]
+    kvar_columns = [table.enhedsnummer, table.aar, table.kvartal,
+                    table.aarsvaerk, table.ansatte,
+                    table.aarsvaerkinterval, table.ansatteinterval]
     kfp = UploadEmployment(kvar_field, kvar_keys, table, kvar_columns)
     return kfp
 
 
 def get_upload_employment_month():
-    table = alchemy_tables.MaanedsbeskaeftigelseInterval
+    table = alchemy_tables.Maanedsbeskaeftigelse
     mnd_field = 'maanedsbeskaeftigelse'
-    mnd_keys = ['aar', 'maaned', 'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte']
-    mnd_columns = [table.enhedsnummer, table.aar, table.maaned, table.aarsvaerk,
-                   table.ansatte]
+    mnd_keys = ['aar', 'maaned',
+                'antalAarsvaerk', 'antalAnsatte',
+                'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte']
+    mnd_columns = [table.enhedsnummer, table.aar, table.maaned,
+                   table.aarsvaerk, table.ansatte,
+                   table.aarsvaerkinterval, table.ansatteinterval]
     mfp = UploadEmployment(mnd_field, mnd_keys, table, mnd_columns)
     return mfp
 
@@ -424,15 +440,15 @@ class ParserFactory(object):
 
         :param key_store: dabai.cvr_scan.mapping
         """
-        branche_config = {
-            'table_class': alchemy_tables.Branche,
-            'json_fields': ['hovedbranche', 'bibranche1', 'bibranche2', 'bibranche3'],
-            'key': 'branchekode',
-            'key_type': int,
-            'data_fields': ['branchekode', 'branchetekst'],
-            'columns': [alchemy_tables.Branche.branchekode, alchemy_tables.Branche.branchetekst],
-            'mapping': key_store.get_branche_mapping(),
-        }
+        # branche_config = {
+        #     'table_class': alchemy_tables.Branche,
+        #     'json_fields': ['hovedbranche', 'bibranche1', 'bibranche2', 'bibranche3'],
+        #     'key': 'branchekode',
+        #     'key_type': int,
+        #     'data_fields': ['branchekode', 'branchetekst'],
+        #     'columns': [alchemy_tables.Branche.branchekode, alchemy_tables.Branche.branchetekst],
+        #     'mapping': key_store.get_branche_mapping(),
+        # }
         return UploadBrancheData(keystore=key_store.get_branche_mapping())
         # return UploadData(**branche_config)
 

@@ -336,42 +336,52 @@ def create_virk_livsforloeb(db):
     
 def create_monthly_employment(db):
     view_name = 'monthly_employment'
-    lvs = alchemy_tables.MaanedsbeskaeftigelseInterval
+    lvs = alchemy_tables.Maanedsbeskaeftigelse
     vs = alchemy_tables.Virksomhed
     query = select([vs.enhedsnummer,
                     vs.cvrnummer,
                     lvs.aar,
                     lvs.maaned,
                     lvs.aarsvaerk,
-                    lvs.ansatte]).\
+                    lvs.ansatte,
+                    lvs.ansatteinterval,
+                    lvs.aarsvaerkinterval,
+                    lvs.sidstopdateret]).\
         where(lvs.enhedsnummer == vs.enhedsnummer)
     create_view(view_name, query, db)
 
 
 def create_quarterly_employment(db):
     view_name = 'quarterly_employment'
-    lvs = alchemy_tables.KvartalsbeskaeftigelseInterval
+    lvs = alchemy_tables.Kvartalsbeskaeftigelse
     vs = alchemy_tables.Virksomhed
     query = select([vs.enhedsnummer,
                     vs.cvrnummer,
                     lvs.aar,
                     lvs.kvartal,
                     lvs.aarsvaerk,
-                    lvs.ansatte]).\
+                    lvs.ansatte,
+                    lvs.aarsvaerkinterval,
+                    lvs.ansatteinterval,
+                    lvs.sidstopdateret]).\
         where(lvs.enhedsnummer == vs.enhedsnummer)
     create_view(view_name, query, db)
 
 
 def create_yearly_employment(db):
     view_name = 'yearly_employment'
-    lvs = alchemy_tables.AarsbeskaeftigelseInterval
+    lvs = alchemy_tables.Aarsbeskaeftigelse
     vs = alchemy_tables.Virksomhed
     query = select([vs.enhedsnummer,
                     vs.cvrnummer,
                     lvs.aar,
                     lvs.aarsvaerk,
                     lvs.ansatte,
-                    lvs.ansatteinklusivejere]).\
+                    lvs.ansatteinklusivejere,
+                    lvs.aarsvaerkinterval,
+                    lvs.ansatteinterval,
+                    lvs.ansatteinklusivejereinterval
+                    lvs.sidstopdateret]).\
         where(lvs.enhedsnummer == vs.enhedsnummer)
     create_view(view_name, query, db)
 
@@ -385,7 +395,9 @@ def create_virk_kredit_status_view(db):
                     vs.cvrnummer,
                     upd.kode.label('statuskodeid'),
                     stat.statuskode,
+                    stat.statustekst,
                     stat.kreditoplysningskode,
+                    stat.kreditoplysningtekst,
                     upd.gyldigfra,
                     upd.gyldigtil,
                     upd.sidstopdateret]).\
