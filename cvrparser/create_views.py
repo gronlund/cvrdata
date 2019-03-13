@@ -380,11 +380,10 @@ def create_yearly_employment(db):
                     lvs.ansatteinklusivejere,
                     lvs.aarsvaerkinterval,
                     lvs.ansatteinterval,
-                    lvs.ansatteinklusivejereinterval
+                    lvs.ansatteinklusivejereinterval,
                     lvs.sidstopdateret]).\
         where(lvs.enhedsnummer == vs.enhedsnummer)
     create_view(view_name, query, db)
-
 
 
 def create_virk_kredit_status_view(db):
