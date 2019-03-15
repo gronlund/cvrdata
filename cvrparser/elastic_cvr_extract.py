@@ -17,7 +17,6 @@ from . import data_scanner
 from .cvr_download import download_all_dicts_to_file
 from multiprocessing.pool import Pool
 import multiprocessing
-import logging
 import time
 import sys
 
@@ -25,8 +24,8 @@ import sys
 def update_all_mp(workers=1):
     # https://docs.python.org/3/howto/logging-cookbook.html
     #multiprocessing.log_to_stderr()
-    logger = logging.getLogger('cvrparser')
-    logger.setLevel(logging.INFO)
+    #logger = logging.getLogger('cvrparser')
+    #logger.setLevel(logging.INFO)
     # add two handlers here
     lock = multiprocessing.Lock()
     
@@ -39,18 +38,23 @@ def update_all_mp(workers=1):
     for c in consumers:
         c.daemon = True
         c.start()
-    prod.join()
-    ### PRINT HERE
-    with lock:
-        logger.info('Producer Done - Adding Sentinels')
+    try:
+        prod.join()
+        print('Producer done', 'adding sentinels')
+        with lock:
+            print('Producer Done - Adding Sentinels')
+    except Exception as e:
+        with lock:
+            print('Something wroing in waiting for producer')
+            print('Exception:', e)
     for i in range(workers):
-        logger.info('Adding sentinel')
+        print('Adding sentinel')
         queue.put(CvrConnection.cvr_sentinel)
-
+    
     for c in consumers:
-        logger.info('waiting for consumer')
+        print('waiting for consumers', c)
         c.join()
-    logger.info('all consumers done')
+    print('all consumers done')
     queue.close()
     
 
@@ -583,9 +587,10 @@ def retry_generator(g):
         except StopIteration:
             return
         except Exception as e:
+            print('retry generator', failed)
             failed += 1
             print(e)
-            if failed > 10:
+            if failed > 3:
                 raise
 
 
@@ -597,9 +602,24 @@ def cvr_update_producer(queue, lock):
     """
     engine.dispose()
     t0 = time.time()
+
+    logger = logging.getLogger('producer')
+    logger.setLevel(logging.DEBUG)
+    # create file handler which logs even debug messages
+    fh = logging.FileHandler('producer.log')
+    fh.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+    # add the handlers to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
     with lock:
-        print('Starting producer => {}'.format(os.getpid()))
-    
+        logger.info('Starting producer => {}'.format(os.getpid()))
+
     try:
         cvr = CvrConnection()
         enh_samtid_map = CvrConnection.make_samtid_dict()
@@ -615,7 +635,7 @@ def cvr_update_producer(queue, lock):
                 keys = dat.keys()
                 dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
                 if len(dict_type_set) != 1:
-                    add_error('BAD DICT DOWNLOADED \n{0} {1}'.format(dat, dict_type_set))
+                    logger.debug('BAD DICT DOWNLOADED \n{0} {1}'.format(dat, dict_type_set))
                     continue
                 dict_type = dict_type_set.pop()
                 dat = dat[dict_type]
@@ -634,17 +654,15 @@ def cvr_update_producer(queue, lock):
                         except Exception as e:
                             print('Producer timeout failed - retrying', repeat, e, dict_type, dat)
             except Exception as e:
-                print('Producer Exception: ', e, i, obj, file=sys.stderr)
-                print('continue producer', file=sys.stderr)
-                print(obj)
+                logging.debug('Producer exception:', i, e, obj)
+                print('continue producer')
+                # print(obj)
             if ((i+1) % 10000) == 0:
                 with lock:
                     print('{0} objects parsed and inserted into queue'.format(i))
-                    # print('test break')
-                
-                # break
     except Exception as e:
         print('*** generator error ***', file=sys.stderr)
+        logging.debug('generator error', e)
         print(e, file=sys.stderr)
         print(type(e), file=sys.stderr)
         print(cvr, dummy, params, search, generator, file=sys.stderr)
@@ -659,6 +677,7 @@ def cvr_update_producer(queue, lock):
         print('Producer Time Used:', t1-t0)
     # queue.put(cvr.cvr_sentinel)
     #    queue.put(cvr.cvr_sentinel)
+
 
 def test_producer():
     print('test producer')
@@ -707,7 +726,7 @@ def cvr_update_consumer(queue, lock):
         # try:
         while True:
             try:
-                obj = queue.get(timeout=60)
+                obj = queue.get(timeout=300)
                 break
             except Exception as e:
                 print('consumer timeout reached - retrying', e)
