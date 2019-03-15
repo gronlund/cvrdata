@@ -17,7 +17,7 @@ class MyCache(object):
 
 class SessionCache(MyCache):
 
-    def __init__(self, table_class, columns, batch_size=10000):
+    def __init__(self, table_class, columns, batch_size=1000):
         self.columns = columns
         self.fields = [x.name for x in columns]
         self.cache = []
@@ -36,7 +36,7 @@ class SessionInsertCache(SessionCache):
        Wrap session around keystore.update
     """
 
-    def __init__(self, table_class, columns,  batch_size=10000):
+    def __init__(self, table_class, columns,  batch_size=1000):
         super().__init__(table_class, columns, batch_size)
 
     def commit(self):
@@ -54,7 +54,7 @@ class SessionInsertCache(SessionCache):
 
 
 class SessionKeystoreCache(SessionCache):
-    def __init__(self, table_class, columns, keystore, batch_size=10000):
+    def __init__(self, table_class, columns, keystore, batch_size=1000):
         super().__init__(table_class, columns, batch_size)
         self.keystore = keystore
 
@@ -89,7 +89,7 @@ class SessionUpdateCache(SessionCache):
         where data should not include the key
     """
 
-    def __init__(self, table_class, key_columns, data_columns, batch_size=10000):
+    def __init__(self, table_class, key_columns, data_columns, batch_size=1000):
         super().__init__(table_class, key_columns+data_columns, batch_size)
         self.key_columns = key_columns
         self.data_columns = data_columns

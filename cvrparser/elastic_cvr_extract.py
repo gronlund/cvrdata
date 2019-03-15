@@ -19,6 +19,7 @@ from multiprocessing.pool import Pool
 import multiprocessing
 import time
 import sys
+import tqdm
 
 
 def update_all_mp(workers=1):
@@ -29,7 +30,7 @@ def update_all_mp(workers=1):
     # add two handlers here
     lock = multiprocessing.Lock()
     
-    queue = multiprocessing.Queue() # maxsize=1000*1000*20)
+    queue = multiprocessing.Queue(maxsize=10000) # maxsize=1000*1000*20)
     prod = multiprocessing.Process(target=cvr_update_producer, args=(queue, lock))
     # prod.daemon = True
     prod.start()
@@ -80,8 +81,6 @@ class CvrConnection(object):
         """ Setup everything needed for elasticsearch
         connection to Danish Business Authority for CVR data extraction
         consider moving elastic search connection into __init__
-        currently inserts 300-400 units per second to database.
-        So insert of all will take around 5-6 hours.
 
         Args:
         -----
@@ -629,7 +628,7 @@ def cvr_update_producer(queue, lock):
         # search = Search(using=cvr.elastic_client, index=cvr.index).query(elasticsearch_dsl.query.MatchAll()).params(**params)
 
         generator = search.scan()
-        for i, obj in enumerate(retry_generator(generator)):
+        for obj in tqdm.tqdm(generator):
             try:
                 dat = obj.to_dict()
                 keys = dat.keys()
@@ -649,7 +648,7 @@ def cvr_update_producer(queue, lock):
                 if samtid > current_update.samtid:
                     for repeat in range(100):
                         try:
-                            queue.put((dict_type, dat), timeout=60)
+                            queue.put((dict_type, dat), timeout=120)
                             break
                         except Exception as e:
                             print('Producer timeout failed - retrying', repeat, e, dict_type, dat)
@@ -657,9 +656,9 @@ def cvr_update_producer(queue, lock):
                 logging.debug('Producer exception:', i, e, obj)
                 print('continue producer')
                 # print(obj)
-            if ((i+1) % 10000) == 0:
-                with lock:
-                    print('{0} objects parsed and inserted into queue'.format(i))
+            # if ((i+1) % 10000) == 0:
+            #     with lock:
+            #         print('{0} objects parsed and inserted into queue'.format(i))
     except Exception as e:
         print('*** generator error ***', file=sys.stderr)
         logging.debug('generator error', e)
@@ -733,6 +732,7 @@ def cvr_update_consumer(queue, lock):
         try:  # move this
             if obj == cvr.cvr_sentinel:
                 print('sentinel found - Thats it im out of here')
+                # queue.put(obj)
                 break
             assert len(obj) == 2, 'obj not length 2 - should be tuple of length 2'
             dict_type = obj[0]
