@@ -29,8 +29,7 @@ def update_all_mp(workers=1):
     #logger.setLevel(logging.INFO)
     # add two handlers here
     lock = multiprocessing.Lock()
-    
-    queue = multiprocessing.Queue(maxsize=10000) # maxsize=1000*1000*20)
+    queue = multiprocessing.Queue(maxsize=10000)  # maxsize=1000*1000*20)
     prod = multiprocessing.Process(target=cvr_update_producer, args=(queue, lock))
     # prod.daemon = True
     prod.start()
@@ -651,9 +650,10 @@ def cvr_update_producer(queue, lock):
                             queue.put((dict_type, dat), timeout=120)
                             break
                         except Exception as e:
-                            print('Producer timeout failed - retrying', repeat, e, dict_type, dat)
+                            logger.debug('Producer timeout failed - retrying', repeat, e, dict_type, dat)
+
             except Exception as e:
-                logging.debug('Producer exception:', i, e, obj)
+                logger.debug('Producer exception:', e, obj)
                 print('continue producer')
                 # print(obj)
             # if ((i+1) % 10000) == 0:
@@ -661,19 +661,19 @@ def cvr_update_producer(queue, lock):
             #         print('{0} objects parsed and inserted into queue'.format(i))
     except Exception as e:
         print('*** generator error ***', file=sys.stderr)
-        logging.debug('generator error', e)
-        print(e, file=sys.stderr)
-        print(type(e), file=sys.stderr)
-        print(cvr, dummy, params, search, generator, file=sys.stderr)
+        logger.debug('generator error', e)
+        logger.info(e, file=sys.stderr)
+        logger.info(type(e), file=sys.stderr)
+        logger.info(cvr, dummy, params, search, generator, file=sys.stderr)
         return
     # Synchronize access to the console
     with lock:
-        print('objects parsing done')
+        logger.info('objects parsing done')
 
     t1 = time.time()
     with lock:
-        print('Producer Done. Exiting...{0}'.format(os.getpid()))
-        print('Producer Time Used:', t1-t0)
+        logger.info('Producer Done. Exiting...{0}'.format(os.getpid()))
+        logger.info('Producer Time Used:', t1-t0)
     # queue.put(cvr.cvr_sentinel)
     #    queue.put(cvr.cvr_sentinel)
 
@@ -717,6 +717,23 @@ def cvr_update_consumer(queue, lock):
     with lock:
         print('Starting consumer  => {0}'.format(os.getpid()))
 
+    logger = logging.getLogger('producer')
+    logger.setLevel(logging.DEBUG)
+    # create file handler which logs even debug messages
+    fh = logging.FileHandler('consumer_{0}.log'.format(os.getpid()))
+    fh.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+    # add the handlers to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+    with lock:
+        logger.info('Starting producer => {}'.format(os.getpid()))
+
     cvr = CvrConnection()
     # enh_samtid_map = CvrConnection.make_samtid_dict()
     # dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=CvrConnection.dummy_date)
@@ -743,16 +760,16 @@ def cvr_update_consumer(queue, lock):
                 dicts[dict_type].clear()
         except Exception as e:
             with lock:
-                print('Exception in consumer:', os.getpid(), '\n', e)
+                logger.debug('Exception in consumer:', os.getpid(), '\n', e)
             print('insert one by one')            
             for enh_type, _dicts in dicts.items():
                 for one_dict in _dicts:
-                    print('inserting ', one_dict['enhedsNummer'])
+                    logger.debug('inserting ', one_dict['enhedsNummer'])
                     try:
                         cvr.update([one_dict], enh_type)
                     except Exception as e:
-                        print('one insert error\n', e)
-                        print('enh failed', one_dict['enhedsNummer'], file=sys.stderr)
+                        logger.debug('one insert error\n', e)
+                        logger.debug('enh failed', one_dict['enhedsNummer'], file=sys.stderr)
         # except Exception as e:
         #     print('Consumer exception', e)
         #     import pdb
