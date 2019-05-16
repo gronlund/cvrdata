@@ -121,6 +121,19 @@ parser_setup.add_argument('-i', '--indexes',
                           default=False,
                           action='store_true'
                           )
+parser_setup.add_argument('-dv_force', '--drop_views',
+                          dest='drop_views',
+                          help='Drop Views',
+                          default=False,
+                          action='store_true'
+                          )
+parser_setup.add_argument('-dt_force', '--drop_tables',
+                          dest='drop_views',
+                          help='Drop Views',
+                          default=False,
+                          action='store_true'
+                          )
+
 
 
 if __name__ == "__main__":

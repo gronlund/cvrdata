@@ -1,6 +1,7 @@
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Executable, ClauseElement
 from sqlalchemy import select
+from sqlalchemy.schema import DDLElement
 from . import alchemy_tables
 from . import engine
 
@@ -44,6 +45,21 @@ def create_view(name, select_stmt, db):
     print('Create View', name, select_stmt)
     engine.execute(CreateView(name, select_stmt))
 
+class DropView(DDLElement):
+    def __init__(self, name):
+        self.name = name
+
+
+@compiles(DropView)
+def compile(element, compiler, **kw):
+    return "DROP VIEW %s" % (element.name)
+
+
+def drop_view(name, db):
+    if not name in db.tables_dict.keys():
+        print('view not there?')
+    engine.execute(DropView(name))
+
 
 def create_views():
     """ create all defined views  """
@@ -70,6 +86,13 @@ def create_views():
     create_monthly_employment(db)
     create_quarterly_employment(db)
     create_yearly_employment(db)
+
+
+def drop_views():
+    view_names = ['ejere']
+    db = alchemy_tables.DBModel()
+    for view_name in view_names:
+        drop_view(view_name, db)
 
 
 def create_branche_view(db):

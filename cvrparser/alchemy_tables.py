@@ -383,6 +383,10 @@ class CreateDatabase(object):
                            Virksomhedsform,
                            Virksomhedsstatus
                            ]
+    
+    
+    def delete_tables(self):
+        pass    
 
     def create_tables(self):
         # base.metadata.create_all(engine, tables=[x.__table__ for x in tables])
@@ -516,14 +520,6 @@ class CreateDatabase(object):
                 print('Probably already exists')
                 print(e)
 
-    def create_views(self):
-        """ create database views
-
-        :return:
-        """
-        views = []
-        for view in views:
-            view.create(engine)
 
     def create_my_sql_text_index(self, my_class, full_text_columns):
         mysql_full_text_command = """ALTER TABLE {0.__tablename__} ADD FULLTEXT ({1})"""

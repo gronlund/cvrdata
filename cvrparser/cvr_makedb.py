@@ -32,6 +32,10 @@ class MakeCvrDatabase(object):
         create_views.create_views()
 
     @staticmethod
+    def drop_views_and_tables():
+        print('')
+
+    @staticmethod
     def download_dawa():
         """ Download newst dawa file """
         print('Download newest dawa data')
