@@ -662,9 +662,9 @@ def cvr_update_producer(queue, lock):
     except Exception as e:
         print('*** generator error ***', file=sys.stderr)
         logger.debug('generator error', e)
-        logger.info(e, file=sys.stderr)
-        logger.info(type(e), file=sys.stderr)
-        logger.info(cvr, dummy, params, search, generator, file=sys.stderr)
+        logger.info(e)
+        logger.info(type(e))
+        logger.info(cvr, dummy, params, search, generator)
         return
     # Synchronize access to the console
     with lock:
@@ -769,7 +769,7 @@ def cvr_update_consumer(queue, lock):
                         cvr.update([one_dict], enh_type)
                     except Exception as e:
                         logger.debug('one insert error\n', e)
-                        logger.debug('enh failed', one_dict['enhedsNummer'], file=sys.stderr)
+                        logger.debug('enh failed', one_dict['enhedsNummer'])
         # except Exception as e:
         #     print('Consumer exception', e)
         #     import pdb
