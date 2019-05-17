@@ -19,7 +19,6 @@ from multiprocessing.pool import Pool
 import multiprocessing
 import time
 import sys
-import tqdm
 
 
 def update_all_mp(workers=1):
@@ -664,7 +663,6 @@ def cvr_update_producer(queue, lock):
         logger.debug('generator error', e)
         logger.info(e)
         logger.info(type(e))
-        logger.info(cvr, dummy, params, search, generator)
         return
     # Synchronize access to the console
     with lock:
@@ -673,7 +671,7 @@ def cvr_update_producer(queue, lock):
     t1 = time.time()
     with lock:
         logger.info('Producer Done. Exiting...{0}'.format(os.getpid()))
-        logger.info('Producer Time Used:', t1-t0)
+        logger.info('Producer Time Used: {0}'.format(t1-t0))
     # queue.put(cvr.cvr_sentinel)
     #    queue.put(cvr.cvr_sentinel)
 
