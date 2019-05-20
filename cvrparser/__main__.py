@@ -10,7 +10,7 @@ from . import cvr_makedb
 class Commands:
 
     @staticmethod
-    def dbsetup(create_tables, create_query_indexes, create_views):
+    def dbsetup(create_tables, create_query_indexes, create_views, drop_views):
         interactive_ensure_config_exists()
         setup_database_connection()
         crdb = cvr_makedb.MakeCvrDatabase()
