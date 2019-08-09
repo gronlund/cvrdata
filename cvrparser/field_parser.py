@@ -381,6 +381,15 @@ def get_upload_employment_month():
     return mfp
 
 
+def get_employment_parser():
+    vp = ParserList()
+    vp.add_listener(get_upload_employment_year())
+    vp.add_listener(get_upload_employment_quarter())
+    vp.add_listener(get_upload_employment_month())
+    return vp
+
+
+
 class AttributParser(Parser):
     """ class for parsing cvr attributter objects """
 
@@ -419,7 +428,7 @@ class AddressParser(Parser):
     def insert(self, data):
         enh = data['enhedsNummer']
         for field in self.json_fields:
-            for bi, z in enumerate(data[field]):
+            for _, z in enumerate(data[field]):
                 tfrom, tto, utc_sidstopdateret = get_date(z)
                 if 'adresseId' in z and z['adresseId'] is not None:
                     aid = z['adresseId']

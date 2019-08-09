@@ -17,7 +17,7 @@ def insert_values(dicts, parser):
     :param parser: parser, that extracts the data
     """
 
-    for j, d in enumerate(dicts):
+    for _, d in enumerate(dicts):
         parser.insert(d)
         # if ((j+1) % 1001) == 0:
         #     print('{0} objects parsed'.format(j))
@@ -69,6 +69,10 @@ def get_person_static_parser(key_store=None):
 
 def get_penhed_static_parser(key_store=None):
     return penhed_parser.PenhedParserFactory(key_store=key_store).get_static_parser()
+
+def get_emp_parser():
+    return field_parser.get_employment_parser()
+
 
 
 class Mapping(object):
@@ -192,14 +196,17 @@ class DataParser(object):
             self.data_parser = get_company_data_parsers
             self.dynamic_parser = get_company_dynamic_parsers
             self.static_parser = get_company_static_parser
+            self.employment_parser = get_emp_parser
         elif _type == 'Vrdeltagerperson':
             self.data_parser = get_person_data_parsers
             self.dynamic_parser = get_person_dynamic_parsers
             self.static_parser = get_person_static_parser
+            self.employment_parser = None
         elif _type == 'VrproduktionsEnhed':
             self.data_parser = get_penhed_data_parsers
             self.dynamic_parser = get_penhed_dynamic_parsers
             self.static_parser = get_penhed_static_parser
+            self.employment_parser = get_emp_parser
         else:
             raise Exception('Bad Type {0}'.format(_type))
 
@@ -212,6 +219,8 @@ class DataParser(object):
     def parse_static_data(self, dicts):
         insert_values(dicts, self.static_parser(self.keystore))
 
+    def parse_employment(self, dicts):
+        insert_values(dicts, self.employment_parser())
 
 class AddressParserFactory(object):
     """ Simple Factory for making an adresse parser """

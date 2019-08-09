@@ -43,7 +43,7 @@ class PenhedParserFactory(object):
         vp = fp.ParserList()
 
         # Direct maps
-        virk_relation = ('virksomhedsrelation', 'cvrNummer', 'penhed')
+        #virk_relation = ('virksomhedsrelation', 'cvrNummer', 'penhed')
         # navn, binavn
         navn_mapping = self.key_store.get_name_mapping()
         navne = ('navne', 'navn', 'navn', navn_mapping)
@@ -78,3 +78,5 @@ class PenhedParserFactory(object):
         vp.add_listener(update_parser)
         vp.add_listener(parser_organisation.CompanyOrganisationParser())
         return vp
+
+    

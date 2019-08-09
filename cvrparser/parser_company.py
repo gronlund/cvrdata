@@ -217,3 +217,5 @@ class VirksomhedParserFactory(object):
         vp.add_listener(parser_organisation.SpaltningFusionParser())
 
         return vp
+
+

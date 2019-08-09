@@ -47,7 +47,7 @@ def update_all_mp(workers=1):
             print('Something wroing in waiting for producer')
             print('Exception:', e)
     for i in range(workers):
-        print('Adding sentinel')
+        print('Adding sentinel', i)
         queue.put(CvrConnection.cvr_sentinel)
     
     for c in consumers:
@@ -191,7 +191,7 @@ class CvrConnection(object):
         download_all_dicts_to_file(filename, search)
 
     def download_all_dicts_to_file_from_update_info(self, update_info):
-        """
+        """ DEPRECATED
         :param update_info:  update_info, dict with update info for each unit type
         :return:
         str: filename, datetime: download time, bool: new download or use old file
@@ -203,7 +203,7 @@ class CvrConnection(object):
             os.remove(filename)
         print('Download updates to file name: {0}'.format(filename))
         params = {'scroll': self.elastic_search_scroll_time, 'size': self.elastic_search_scan_size}
-        for (cvr_type, _type) in self.source_keymap.items():
+        for (_, _type) in self.source_keymap.items():
             print('Downloading Type {0}'.format(_type))
             search = Search(using=self.elastic_client, index=self.index)
             if len(update_info[_type]['units']) < self.max_download_size:
@@ -278,8 +278,26 @@ class CvrConnection(object):
             self.insert(dicts, _type)
         except Exception as e:
             print(e)
+            print('enh {0} failed - enh_type: {1}'.format(enh, _type))
+            raise e
+        # print('Update Done!')
+
+    def update_employment_only(self, dicts, _type):
+        """ Update employment - used due to cvr bug that does not update version id when updating employment so we just always update that
+
+        Args:
+            dicts: list of dictionaries with data
+            _type: string, type object to update
+        """
+        enh = [x['enhedsNummer'] for x in dicts]
+        CvrConnection.delete_employment_only(enh)
+        try:
+            self.insert_employment_only(dicts, _type)
+        except Exception as e:
+            print(e)
             print('enh failed', enh)
             raise e
+    
         # print('Update Done!')
 
     @staticmethod
@@ -340,6 +358,29 @@ class CvrConnection(object):
         for t in threads:
             t.join()
 
+    @staticmethod
+    def delete_employment_only(enh):
+        """ Delete from employment tables only """
+        delete_table_models = [alchemy_tables.Aarsbeskaeftigelse,
+                  alchemy_tables.Kvartalsbeskaeftigelse,
+                  alchemy_tables.Maanedsbeskaeftigelse]
+
+        def worker(work_idx):
+            session = create_session()
+            table_class = delete_table_models[work_idx]
+            session.query(table_class).filter(table_class.enhedsnummer.in_(enh)).delete(synchronize_session=False)
+            session.commit()
+            session.close()
+        
+        threads = []
+        for i in range(len(delete_table_models)):
+            t = threading.Thread(target=worker, args=(i,))
+            threads.append(t)
+            t.start()
+    
+        for t in threads:
+            t.join()
+          
     def insert(self, dicts, enh_type):
         """ Insert data from dicts
 
@@ -356,6 +397,11 @@ class CvrConnection(object):
         data_parser.parse_static_data(dicts)
         # print('static parsed')
 
+    def insert_employment_only(self, dicts, enh_type):
+        """ Inserts only employment data - needed to to missing version id when employment data updated in CVR"""
+        data_parser = data_scanner.DataParser(_type=enh_type)
+        data_parser.parse_employment(dicts)
+    
     @staticmethod
     def get_samtid_dict(table):
         session = create_session()
@@ -413,7 +459,7 @@ class CvrConnection(object):
                 keys = raw_dat.keys()
                 dict_type_set = keys & self.source_keymap.values()  # intersects the two key sets
                 if len(dict_type_set) != 1:
-                    add_error('BAD DICT DOWNLOADED {0}'.format(raw_dat))
+                    add_error('BAD DICT DOWNLOADED {0}'.format(str(raw_dat)))
                     continue
                 dict_type = dict_type_set.pop()
                 dat = raw_dat[dict_type]
@@ -626,6 +672,7 @@ def cvr_update_producer(queue, lock):
         # search = Search(using=cvr.elastic_client, index=cvr.index).query(elasticsearch_dsl.query.MatchAll()).params(**params)
 
         generator = search.scan()
+        full_update = False
         for obj in tqdm.tqdm(generator):
             try:
                 dat = obj.to_dict()
@@ -643,13 +690,20 @@ def cvr_update_producer(queue, lock):
                     dat['samtId'] = -1
                     samtid = -1
                 current_update = enh_samtid_map[enhedsnummer] if enhedsnummer in enh_samtid_map else dummy
+                
                 if samtid > current_update.samtid:
-                    for repeat in range(100):
-                        try:
-                            queue.put((dict_type, dat), timeout=120)
-                            break
-                        except Exception as e:
-                            logger.debug('Producer timeout failed - retrying', repeat, e, dict_type, dat)
+                    full_update = True
+                else:
+                    if dict_type == 'Vrdeltagerperson':
+                        continue
+                    full_update = False
+
+                for repeat in range(100):
+                    try:
+                        queue.put((dict_type, dat, full_update), timeout=120)
+                        break
+                    except Exception as e:
+                        logger.debug('Producer timeout failed {0} - retrying {1} - {2}'.format(str(e), enhedsnummer, dict_type), exc_info=1)
 
             except Exception as e:
                 logger.debug('Producer exception:', e, obj)
@@ -660,7 +714,7 @@ def cvr_update_producer(queue, lock):
             #         print('{0} objects parsed and inserted into queue'.format(i))
     except Exception as e:
         print('*** generator error ***', file=sys.stderr)
-        logger.debug('generator error', e)
+        logger.debug('generator error: {0}'.format(str(e)))
         logger.info(e)
         logger.info(type(e))
         return
@@ -689,7 +743,7 @@ def test_producer():
                 self.counter[dict_type] += 1
             else:
                 self.counter[dict_type] = 1
-            dat = obj[1]
+            #dat = obj[1]
 
 
     class dumlock():
@@ -715,7 +769,7 @@ def cvr_update_consumer(queue, lock):
     with lock:
         print('Starting consumer  => {0}'.format(os.getpid()))
 
-    logger = logging.getLogger('producer')
+    logger = logging.getLogger('consumer-{0}'.format(os.getpid()))
     logger.setLevel(logging.DEBUG)
     # create file handler which logs even debug messages
     fh = logging.FileHandler('consumer_{0}.log'.format(os.getpid()))
@@ -729,13 +783,13 @@ def cvr_update_consumer(queue, lock):
     # add the handlers to logger
     logger.addHandler(ch)
     logger.addHandler(fh)
-    with lock:
-        logger.info('Starting producer => {}'.format(os.getpid()))
+    logger.info('Starting consuder => {}'.format(os.getpid()))
 
     cvr = CvrConnection()
     # enh_samtid_map = CvrConnection.make_samtid_dict()
     # dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=CvrConnection.dummy_date)
     dicts = {x: list() for x in CvrConnection.source_keymap.values()}
+    emp_dicts = {x: list() for x in CvrConnection.source_keymap.values()}
     while True:
         # try:
         while True:
@@ -749,25 +803,36 @@ def cvr_update_consumer(queue, lock):
                 print('sentinel found - Thats it im out of here')
                 # queue.put(obj)
                 break
-            assert len(obj) == 2, 'obj not length 2 - should be tuple of length 2'
+            assert len(obj) == 3, 'obj not length 2 - should be tuple of length 3'
             dict_type = obj[0]
             dat = obj[1]
-            dicts[dict_type].append(dat)
-            if len(dicts[dict_type]) >= cvr.update_batch_size:
-                cvr.update(dicts[dict_type], dict_type)
-                dicts[dict_type].clear()
+            full_update = obj[2]
+            if full_update:
+                dicts_to_use = dicts
+            else:
+                dicts_to_use =  emp_dicts
+            dicts_to_use[dict_type].append(dat)
+            if len(dicts_to_use[dict_type]) >= cvr.update_batch_size:
+                if full_update:
+                    cvr.update(dicts_to_use[dict_type], dict_type)
+                else:
+                    cvr.update_employment_only(dicts_to_use[dict_type], dict_type)
+                dicts_to_use[dict_type].clear()            
         except Exception as e:
-            with lock:
-                logger.debug('Exception in consumer:', os.getpid(), '\n', e)
+            logger.debug('Exception in consumer: {0} - {1}'.format(os.getpid(), str(e)), exc_info=1)
             print('insert one by one')            
             for enh_type, _dicts in dicts.items():
                 for one_dict in _dicts:
-                    logger.debug('inserting ', one_dict['enhedsNummer'])
+                    logger.debug('inserting {0}'.format(one_dict['enhedsNummer']))
                     try:
-                        cvr.update([one_dict], enh_type)
+                        if full_update:
+                            cvr.update([one_dict], enh_type)
+                        else:
+                            print('error in emp only')
+                            cvr.update_employment_only([one_dict], enh_type)
                     except Exception as e:
-                        logger.debug('one insert error\n', e)
-                        logger.debug('enh failed', one_dict['enhedsNummer'])
+                        logger.debug('one insert error\n{0}'.format(str(e)))
+                        logger.debug('enh failed: {0}'.format(one_dict['enhedsNummer']))
         # except Exception as e:
         #     print('Consumer exception', e)
         #     import pdb
@@ -776,6 +841,10 @@ def cvr_update_consumer(queue, lock):
     for enh_type, _dicts in dicts.items():
         if len(_dicts) > 0:
             cvr.update(_dicts, enh_type)
+    for enh_type, _dicts in emp_dicts.items():
+        if len(_dicts) > 0:
+            cvr.update_employment_only(_dicts, enh_type)
+        
     t1 = time.time()
     with lock:
         print('Consumer Done. Exiting...{0} - time used {1}'.format(os.getpid(), t1-t0))

@@ -405,8 +405,7 @@ class CreateDatabase(object):
 
         :return:
         """
-        attributter_type_index = Index('attributter_type_index',
-                                       Attributter.vaerdinavn)
+        #attributter_type_index = Index('attributter_type_index', Attributter.vaerdinavn)
         # enheds_vaerdinavn_index = Index('enheds_vaerdinavn_index',
         # Enhedsrelation.vaerdinavn, Enhedsrelation.vaerdi)
 
@@ -416,10 +415,9 @@ class CreateDatabase(object):
                                   Update.enhedsnummer,
                                   Update.gyldigfra,
                                   Update.gyldigtil)
-        spalt_org = Index('spalt_virk_index',
-                          SpaltningFusion.enhedsnummer_organisation)
-        org_navn = Index('orgnavn_navn', Organisation.navn)
-        org_hovedtype = Index('orgnavn_hovedtype', Organisation.hovedtype, Organisation.navn)
+        #spalt_org = Index('spalt_virk_index', SpaltningFusion.enhedsnummer_organisation)
+        #org_navn = Index('orgnavn_navn', Organisation.navn)
+        #org_hovedtype = Index('orgnavn_hovedtype', Organisation.hovedtype, Organisation.navn)
         enheds_org_index = Index('enheds_org_index',
                                  Enhedsrelation.enhedsnummer_organisation)
         branchekode_index = Index('branchekode_index',
@@ -448,10 +446,8 @@ class CreateDatabase(object):
         # text_indexes = [(Enhedsrelation, vaerdi)]
 
     def create_text_indexes(self):
-        enheds_vaerdi_index = Index('enheds_vaerdi_index',
-                                    Enhedsrelation.vaerdi)  # text index
-        attributter_value_index = Index('attributter_value_index',
-                                        Attributter.vaerdi)
+        #enheds_vaerdi_index = Index('enheds_vaerdi_index', Enhedsrelation.vaerdi)  # text index
+        #attributter_value_index = Index('attributter_value_index', Attributter.vaerdi)
         pass
 
 
