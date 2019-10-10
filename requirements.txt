@@ -32,7 +32,7 @@ pytz == 2017.3
 
 # cvrparser/adresse.py: 6
 # cvrparser/cvr_makedb.py: 4
-requests == 2.18.4
+requests == 2.20.0
 
 tqdm >= 4.19.4
 # cvrparser/cvr_download.py: 4
