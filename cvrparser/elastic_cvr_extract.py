@@ -235,8 +235,6 @@ class CvrConnection(object):
         for _data_dict in data_list:
             # dict_type = data_dict['_type']
             # print('data dict', data_dict)
-            # import pdb
-            # pdb.set_trace()
             #dict_type = data_dict['_type']
             data_dict = _data_dict.to_dict()
             keys = data_dict['_source'].keys()
@@ -317,6 +315,9 @@ class CvrConnection(object):
                                alchemy_tables.Aarsbeskaeftigelse,
                                alchemy_tables.Kvartalsbeskaeftigelse,
                                alchemy_tables.Maanedsbeskaeftigelse,
+                               alchemy_tables.erstAarsbeskaeftigelse,
+                               alchemy_tables.erstKvartalsbeskaeftigelse,
+                               alchemy_tables.erstMaanedsbeskaeftigelse,
                                alchemy_tables.SpaltningFusion]
         if _type == 'Vrvirksomhed':
             static_table = alchemy_tables.Virksomhed
