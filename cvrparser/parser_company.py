@@ -148,9 +148,8 @@ class VirksomhedParserFactory(object):
         # attributter - move to dyna parser
         vp.add_listener(fp.AttributParser())
         # employment - move to dyna parser
-        vp.add_listener(fp.get_upload_employment_year())
-        vp.add_listener(fp.get_upload_employment_quarter())
-        vp.add_listener(fp.get_upload_employment_month())
+        [vp.add_listener(x) for x in fp.get_employment_parsers()]
+
         return vp
     
     def get_dyna_parser(self):
@@ -185,6 +184,8 @@ class VirksomhedParserFactory(object):
         tlf = ('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping)
         # telefaxnummer
         fax = ('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping)
+        #sfax = ('sekundaertTelefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping)
+
         # # obligatoriskkemail
         email = ('obligatoriskEmail', 'kontaktoplysning', 'obligatoriskemail', kontakt_mapping)
         # # hjemmeside

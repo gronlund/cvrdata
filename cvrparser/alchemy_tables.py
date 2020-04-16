@@ -62,11 +62,45 @@ class Maanedsbeskaeftigelse(Base):
     ansatteinterval = Column(String(40, 'utf8mb4_bin'))
     sidstopdateret = Column(DateTime, nullable=True)
 
+class erstAarsbeskaeftigelse(Base):
+    __tablename__ = 'erstAarsbeskaeftigelse'
+
+    enhedsnummer = Column(BigInteger, primary_key=True, nullable=False)
+    aar = Column(Integer, primary_key=True, nullable=False)
+    aarsvaerk = Column(Integer)
+    ansatte = Column(Integer)
+    ansatteinklusivejere = Column(Integer)
+    aarsvaerkinterval = Column(String(40, 'utf8mb4_bin'))
+    ansatteinterval = Column(String(40, 'utf8mb4_bin'))
+    ansatteinklusivejereinterval = Column(String(40, 'utf8mb4_bin'))
+    sidstopdateret = Column(DateTime, nullable=True)
 
 
-
+class erstKvartalsbeskaeftigelse(Base):
+    __tablename__ = 'erstKvartalsbeskaeftigelse'
+    enhedsnummer = Column(BigInteger, primary_key=True, nullable=False)
+    aar = Column(Integer, primary_key=True, nullable=False)
+    kvartal = Column(Integer, primary_key=True, nullable=False)
+    aarsvaerk = Column(Integer)
+    ansatte = Column(Integer)
+    aarsvaerkinterval = Column(String(40, 'utf8mb4_bin'))
+    ansatteinterval = Column(String(40, 'utf8mb4_bin'))
+    sidstopdateret = Column(DateTime, nullable=True)
 
     
+class erstMaanedsbeskaeftigelse(Base):
+    __tablename__ = 'erstMaanedsbeskaeftigelse'
+    enhedsnummer = Column(BigInteger, primary_key=True, nullable=False)
+    aar = Column(Integer, primary_key=True, nullable=False)
+    maaned = Column(Integer, primary_key=True, nullable=False)
+    aarsvaerk = Column(Integer)
+    ansatte = Column(Integer)
+    aarsvaerkinterval = Column(String(40, 'utf8mb4_bin'))
+    ansatteinterval = Column(String(40, 'utf8mb4_bin'))
+    sidstopdateret = Column(DateTime, nullable=True)
+
+
+
 class AdresseDawa(Base):
     __tablename__ = 'AdresseDawa'
 
@@ -362,6 +396,7 @@ class Virksomhedsstatus(Base):
 class CreateDatabase(object):
     def __init__(self):
         self.cvr_tables = [Aarsbeskaeftigelse,
+                           erstAarsbeskaeftigelse,
                            AdresseDawa,
                            Adresseupdate,
                            Attributter,
@@ -369,8 +404,10 @@ class CreateDatabase(object):
                            Enhedsrelation,
                            Kontaktinfo,
                            Kvartalsbeskaeftigelse,
+                           erstKvartalsbeskaeftigelse,
                            Livsforloeb,
                            Maanedsbeskaeftigelse,
+                           erstMaanedsbeskaeftigelse,
                            Navne,
                            Organisation,
                            Person,

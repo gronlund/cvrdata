@@ -85,7 +85,9 @@ def beliggenhedsadresse_to_str(beliggenhedsadresse):
     @param beliggenhedsadresse is a dict describing an address as per cvr data.
     @return a string of the form <vejnavn> <husnummer>[<bogstav>][ <etage>][, <postnr>]
     """
-    assert(type(beliggenhedsadresse) == dict)
+    #import pdb 
+    #pdb.set_trace()
+    #assert(type(beliggenhedsadresse) == dict)
     
     vejnavn = beliggenhedsadresse['vejnavn']
     if vejnavn is None or len(vejnavn) == 0:

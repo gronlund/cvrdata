@@ -232,12 +232,13 @@ class CvrConnection(object):
         """
         data_list = self.get_entity(enh)
         dicts = {x: list() for x in self.source_keymap.values()}
-        for data_dict in data_list:
+        for _data_dict in data_list:
             # dict_type = data_dict['_type']
             # print('data dict', data_dict)
             # import pdb
             # pdb.set_trace()
             #dict_type = data_dict['_type']
+            data_dict = _data_dict.to_dict()
             keys = data_dict['_source'].keys()
             dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
             if len(dict_type_set) != 1:

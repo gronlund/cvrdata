@@ -149,8 +149,6 @@ class ParserList(ParserInterface):
         for t in threads:
             t.join()
 
-        # for l in self.listeners:
-        #     l.commit()
 
 
     def add_listener(self, obj):
@@ -222,9 +220,6 @@ class UploadBrancheData(Parser):
                     self.db.insert((key, key))
                 except Exception as e:
                     add_error('bad key in upload branche {0} {1}'.format(e, z))
-
-
-
 
 
 class IdentityDict(object):
@@ -380,12 +375,64 @@ def get_upload_employment_month():
     mfp = UploadEmployment(mnd_field, mnd_keys, table, mnd_columns)
     return mfp
 
+def get_erst_upload_employment_year():
+    """ Simple parser for yearly employment intervals """
+    table = alchemy_tables.erstAarsbeskaeftigelse
+    aar_columns = [table.enhedsnummer, table.aar,
+                   table.aarsvaerk, table.ansatte, table.ansatteinklusivejere,
+                   table.aarsvaerkinterval, table.ansatteinterval, table.ansatteinklusivejereinterval]
+    aar_field = 'erstAarsbeskaeftigelse'
+    aar_keys = ['aar',
+                'antalAarsvaerk', 'antalAnsatte', 'antalInklusivEjere',
+                'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte', 'intervalKodeAntalInklusivEjere']
+    afp = UploadEmployment(aar_field, aar_keys, table, aar_columns)
+    return afp
 
-def get_employment_parser():
-    vp = ParserList()
-    vp.add_listener(get_upload_employment_year())
-    vp.add_listener(get_upload_employment_quarter())
-    vp.add_listener(get_upload_employment_month())
+
+def get_erst_upload_employment_quarter():
+    """ Simple parser for quarterly employment intervals """
+    table = alchemy_tables.erstKvartalsbeskaeftigelse
+    
+    kvar_keys = ['aar', 'kvartal',
+                 'antalAarsvaerk', 'antalAnsatte',
+                 'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte']
+    kvar_field = 'erstKvartalsbeskaeftigelse'
+    kvar_columns = [table.enhedsnummer, table.aar, table.kvartal,
+                    table.aarsvaerk, table.ansatte,
+                    table.aarsvaerkinterval, table.ansatteinterval]
+    kfp = UploadEmployment(kvar_field, kvar_keys, table, kvar_columns)
+    return kfp
+
+
+def get_erst_upload_employment_month():
+    table = alchemy_tables.erstMaanedsbeskaeftigelse
+    mnd_field = 'erstMaanedsbeskaeftigelse'
+    mnd_keys = ['aar', 'maaned',
+                'antalAarsvaerk', 'antalAnsatte',
+                'intervalKodeAntalAarsvaerk', 'intervalKodeAntalAnsatte']
+    mnd_columns = [table.enhedsnummer, table.aar, table.maaned,
+                   table.aarsvaerk, table.ansatte,
+                   table.aarsvaerkinterval, table.ansatteinterval]
+    mfp = UploadEmployment(mnd_field, mnd_keys, table, mnd_columns)
+    return mfp
+
+
+
+def get_employment_parsers():
+    # vp = ParserList()
+    # vp.add_listener(get_upload_employment_year())
+    # vp.add_listener(get_upload_employment_quarter())
+    # vp.add_listener(get_upload_employment_month())
+    # vp.add_listener(get_erst_upload_employment_year())
+    # vp.add_listener(get_erst_upload_employment_quarter())
+    # vp.add_listener(get_erst_upload_employment_month())
+    vp = []
+    vp.append(get_upload_employment_year())
+    vp.append(get_upload_employment_quarter())
+    vp.append(get_upload_employment_month())
+    vp.append(get_erst_upload_employment_year())
+    vp.append(get_erst_upload_employment_quarter())
+    vp.append(get_erst_upload_employment_month())
     return vp
 
 

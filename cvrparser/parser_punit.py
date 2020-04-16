@@ -34,9 +34,10 @@ class PenhedParserFactory(object):
         # attributter
         vp.add_listener(fp.AttributParser())
         # interval employment
-        vp.add_listener(fp.get_upload_employment_year())
-        vp.add_listener(fp.get_upload_employment_quarter())
-        vp.add_listener(fp.get_upload_employment_month())
+        #vp.add_listener(fp.get_upload_employment_year())
+        #vp.add_listener(fp.get_upload_employment_quarter())
+        #vp.add_listener(fp.get_upload_employment_month())
+        [vp.add_listener(x) for x in fp.get_employment_parsers()]
         return vp
 
     def get_dyna_parser(self):
