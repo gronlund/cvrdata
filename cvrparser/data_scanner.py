@@ -222,6 +222,7 @@ class DataParser(object):
     def parse_employment(self, dicts):
         insert_values(dicts, self.employment_parser())
 
+
 class AddressParserFactory(object):
     """ Simple Factory for making an adresse parser """
     def __init__(self):

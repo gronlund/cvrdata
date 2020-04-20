@@ -37,7 +37,7 @@ class PenhedParserFactory(object):
         #vp.add_listener(fp.get_upload_employment_year())
         #vp.add_listener(fp.get_upload_employment_quarter())
         #vp.add_listener(fp.get_upload_employment_month())
-        [vp.add_listener(x) for x in fp.get_employment_parsers()]
+        [vp.add_listener(x) for x in fp.get_employment_list()]
         return vp
 
     def get_dyna_parser(self):
@@ -47,34 +47,26 @@ class PenhedParserFactory(object):
         #virk_relation = ('virksomhedsrelation', 'cvrNummer', 'penhed')
         # navn, binavn
         navn_mapping = self.key_store.get_name_mapping()
-        navne = ('navne', 'navn', 'navn', navn_mapping)
+        navne = fp.UpdateMapping(json_field='navne', key='navn', field_type='navn', field_map=navn_mapping)
         # kontaktinfo
         kontakt_mapping = self.key_store.get_kontakt_mapping()
         # elektroniskpost
-        epost = ('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', kontakt_mapping)
+        epost = fp.UpdateMapping(json_field='elektroniskPost', key='kontaktoplysning', field_type='elektroniskpost', field_map=kontakt_mapping)
         # telefonnummer
-        tlf = ('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping)
+        tlf = fp.UpdateMapping(json_field='telefonNummer', key='kontaktoplysning', field_type='telefonnummer', field_map=kontakt_mapping)
         # telefaxnummer
-        fax = ('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping)
+        fax = fp.UpdateMapping(json_field='telefaxNummer', key='kontaktoplysning', field_type='telefaxnummer', field_map=kontakt_mapping)
 
-        update_parser = fp.UploadMappedUpdates()
-        # for item in [hovedbranche, bibranche1, bibranche2, bibranche3]:
-        #     UpdateParser.add_mapping(fp.UpdateMapping(*item))
-        for item in [navne, epost, tlf, fax]:
-            update_parser.add_mapping(fp.UpdateMapping(*item))
+        # brancher - industri codes
         branche_mapping = self.key_store.get_branche_mapping()
-        hovedbranche = fp.UpdateMapping(json_field='hovedbranche', key=('branchekode', 'branchetekst'),
-                                        field_type='hovedbranche', field_map=branche_mapping)
-        bibranche1 = fp.UpdateMapping(json_field='bibranche1', key=('branchekode', 'branchetekst'),
-                                        field_type='bibranche1', field_map=branche_mapping)
-        bibranche2 = fp.UpdateMapping(json_field='bibranche2', key=('branchekode', 'branchetekst'),
-                                        field_type='bibranche2', field_map=branche_mapping)
-        bibranche3 = fp.UpdateMapping(json_field='bibranche3', key=('branchekode', 'branchetekst'),
-                                        field_type='bibranche3', field_map=branche_mapping)
-        update_parser.add_mapping(hovedbranche)
-        update_parser.add_mapping(bibranche1)
-        update_parser.add_mapping(bibranche2)
-        update_parser.add_mapping(bibranche3)
+        hovedbranche = fp.UpdateMapping(json_field='hovedbranche', key=('branchekode', 'branchetekst'), field_type='hovedbranche', field_map=branche_mapping)
+        bibranche1 = fp.UpdateMapping(json_field='bibranche1', key=('branchekode', 'branchetekst'), field_type='bibranche1', field_map=branche_mapping)
+        bibranche2 = fp.UpdateMapping(json_field='bibranche2', key=('branchekode', 'branchetekst'), field_type='bibranche2', field_map=branche_mapping)
+        bibranche3 = fp.UpdateMapping(json_field='bibranche3', key=('branchekode', 'branchetekst'), field_type='bibranche3', field_map=branche_mapping)
+        
+        update_parser = fp.UploadMappedUpdates()
+        for item in [navne, epost, tlf, fax, hovedbranche, bibranche1, bibranche2, bibranche3]:
+            update_parser.add_mapping(item)
 
         vp.add_listener(update_parser)
         vp.add_listener(parser_organisation.CompanyOrganisationParser())

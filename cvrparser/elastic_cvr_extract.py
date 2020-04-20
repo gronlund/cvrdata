@@ -364,8 +364,12 @@ class CvrConnection(object):
     def delete_employment_only(enh):
         """ Delete from employment tables only """
         delete_table_models = [alchemy_tables.Aarsbeskaeftigelse,
-                  alchemy_tables.Kvartalsbeskaeftigelse,
-                  alchemy_tables.Maanedsbeskaeftigelse]
+                               alchemy_tables.Kvartalsbeskaeftigelse,
+                               alchemy_tables.Maanedsbeskaeftigelse,
+                               alchemy_tables.erstAarsbeskaeftigelse,
+                               alchemy_tables.erstKvartalsbeskaeftigelse,
+                               alchemy_tables.erstMaanedsbeskaeftigelse
+                              ]
 
         def worker(work_idx):
             session = create_session()
@@ -785,7 +789,7 @@ def cvr_update_consumer(queue, lock):
     # add the handlers to logger
     logger.addHandler(ch)
     logger.addHandler(fh)
-    logger.info('Starting consuder => {}'.format(os.getpid()))
+    logger.info('Starting consumer => {}'.format(os.getpid()))
 
     cvr = CvrConnection()
     # enh_samtid_map = CvrConnection.make_samtid_dict()

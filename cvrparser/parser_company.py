@@ -57,7 +57,7 @@ class StatusKoderMap(fp.Parser):
                 add_error('Statuskode - bad statuskode: {0}'.format(enh))
                 continue
             dat = self.field_map[val]
-            tfrom, tto, utc_sidstopdaret = fp.get_date(z)
+            tfrom, tto, utc_sidstopdateret = fp.get_date(z)
             dat = (enh, self.field_type, dat, tfrom, tto)
             self.db.insert(dat)
 
@@ -148,7 +148,7 @@ class VirksomhedParserFactory(object):
         # attributter - move to dyna parser
         vp.add_listener(fp.AttributParser())
         # employment - move to dyna parser
-        [vp.add_listener(x) for x in fp.get_employment_parsers()]
+        [vp.add_listener(x) for x in fp.get_employment_list()]
 
         return vp
     
@@ -157,39 +157,39 @@ class VirksomhedParserFactory(object):
         vp = fp.ParserList()
         vp.add_listener(StatusKoderMap())
 
-        # Direct Inserts
-        virksomhedsform = ('virksomhedsform', 'virksomhedsformkode', 'virksomhedsform')
-        # hovedbranche = ('hovedbranche', 'branchekode', 'hovedbranche')
-        # bibranche1 = ('bibranche1', 'branchekode', 'bibranche1')
-        # bibranche2 = ('bibranche2', 'branchekode', 'bibranche2')
-        # bibranche3 = ('bibranche3', 'branchekode', 'bibranche3')
-        penheder = ('penheder', 'pNummer', 'penhed')
+        ### Direct Inserts
+        virksomhedsform = fp.UpdateMapping(json_field='virksomhedsform', key='virksomhedsformkode', field_type='virksomhedsform')
+        penheder = fp.UpdateMapping(json_field='penheder', key='pNummer', field_type='penhed')
 
-        # Mapped Inserts
+        ### Mapped Inserts
         # company status
         virksomhedsstatus_mapping = self.key_store.get_virksomhedsstatus_mapping()
-        virksomhedsstatus = ('virksomhedsstatus', 'status', 'virksomhedsstatus', virksomhedsstatus_mapping)
+        virksomhedsstatus = fp.UpdateMapping(json_field='virksomhedsstatus', key='status', field_type='virksomhedsstatus', field_map=virksomhedsstatus_mapping)
         # regnummer is obsolete i think...
         regnummer_mapping = self.key_store.get_regnummer_mapping()
-        regnummer = ('regNummer', 'regnummer', 'regnummer', regnummer_mapping)
+        regnummer = fp.UpdateMapping(json_field='regNummer', key='regnummer', field_type='regnummer', field_map=regnummer_mapping)
         # # navn, binavn
         name_mapping = self.key_store.get_name_mapping()
-        navne = ('navne', 'navn', 'navn', name_mapping)
-        binavne = ('binavne', 'navn', 'binavn', name_mapping)
+        navne = fp.UpdateMapping(json_field='navne', key='navn', field_type='navn', field_map=name_mapping)
+        binavne = fp.UpdateMapping(json_field='binavne', key='navn', field_type='binavn', field_map=name_mapping)
         # kontaktinfo
         kontakt_mapping = self.key_store.get_kontakt_mapping()
         # elektroniskpost
-        epost = ('elektroniskPost', 'kontaktoplysning', 'elektroniskpost', kontakt_mapping)
-        # telefonnummer
-        tlf = ('telefonNummer', 'kontaktoplysning', 'telefonnummer', kontakt_mapping)
-        # telefaxnummer
-        fax = ('telefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping)
-        #sfax = ('sekundaertTelefaxNummer', 'kontaktoplysning', 'telefaxnummer', kontakt_mapping)
+        epost = fp.UpdateMapping(json_field='elektroniskPost', key='kontaktoplysning', field_type='elektroniskpost', field_map=kontakt_mapping)
 
-        # # obligatoriskkemail
-        email = ('obligatoriskEmail', 'kontaktoplysning', 'obligatoriskemail', kontakt_mapping)
-        # # hjemmeside
-        hjemmeside = ('hjemmeside', 'kontaktoplysning', 'hjemmeside', kontakt_mapping)
+        # telefonnummer
+        tlf = fp.UpdateMapping(json_field='telefonNummer', key='kontaktoplysning', field_type='telefonnummer', field_map=kontakt_mapping)
+        stlf = fp.UpdateMapping(json_field='sekundaertTelefonNummer', key='kontaktoplysning', field_type='sekundaerttelefonNummer', field_map=kontakt_mapping)
+
+        # telefaxnummer
+        fax = fp.UpdateMapping(json_field='telefaxNummer', key='kontaktoplysning', field_type='telefaxnummer', field_map=kontakt_mapping)
+        sfax = fp.UpdateMapping(json_field='sekundaertTelefaxNummer', key='kontaktoplysning', field_type='sekundaerttelefaxnummer', field_map=kontakt_mapping)
+        
+        # obligatoriskemail
+        email = fp.UpdateMapping(json_field='obligatoriskEmail', key='kontaktoplysning', field_type='obligatoriskemail', field_map=kontakt_mapping)
+        # hjemmeside
+        hjemmeside = fp.UpdateMapping(json_field='hjemmeside', key='kontaktoplysning', field_type='hjemmeside', field_map=kontakt_mapping)  
+
         # Brancher
         branche_mapping = self.key_store.get_branche_mapping()
         hovedbranche = fp.UpdateMapping(json_field='hovedbranche', key=('branchekode', 'branchetekst'),
@@ -202,14 +202,11 @@ class VirksomhedParserFactory(object):
                                         field_type='bibranche3', field_map=branche_mapping)
 
         update_parser = fp.UploadMappedUpdates()
-        for item in (virksomhedsform,  penheder):
-            update_parser.add_mapping(fp.UpdateMapping(*item))
-        for item in (virksomhedsstatus, regnummer, navne, binavne, epost, tlf, fax, email, hjemmeside):
-            update_parser.add_mapping(fp.UpdateMapping(*item))
-        update_parser.add_mapping(hovedbranche)
-        update_parser.add_mapping(bibranche1)
-        update_parser.add_mapping(bibranche2)
-        update_parser.add_mapping(bibranche3)
+        #for item in (virksomhedsform,  penheder):
+        #    update_parser.add_mapping(fp.UpdateMapping(*item))
+        for item in (hovedbranche, bibranche1, bibranche2, bibranche3, virksomhedsform, penheder, virksomhedsstatus, regnummer, navne, binavne, epost, 
+                    tlf, fax, email, hjemmeside):
+            update_parser.add_mapping(item)
 
         vp.add_listener(update_parser)
         # navne_parser = parser_organisation.OrganisationNavnParser()

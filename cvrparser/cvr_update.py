@@ -21,14 +21,16 @@ def run_init():
 
 
 def fill_dawa(dawa_file):
-    info_print('Using File {0}'.format(dawa_file))
-    crdb = cvr_makedb.MakeCvrDatabase()
-    crdb.fill_dawa_table(dawa_file=dawa_file)
+    assert False
+    #info_print('Using File {0}'.format(dawa_file))
+    #crdb = cvr_makedb.MakeCvrDatabase()
+    #crdb.fill_dawa_table(dawa_file=dawa_file)
 
 
 def fill_employment(file_path):
-    crdb = cvr_makedb.MakeCvrDatabase()
-    crdb.fill_employment_tables_from_file(file_path)
+    assert False
+    #crdb = cvr_makedb.MakeCvrDatabase()
+    #crdb.fill_employment_tables_from_file(file_path)
 
 
 def create_views():
@@ -64,6 +66,7 @@ def run_small_test(ecvr):
                  4003799780, 4000683468, 4001970642]
     companies = companies + [4001779051, 4001108429, 4001951019, 4002016604, 5197252, 4000904596, 4006281070, 4002034309, 4006994873, 4000394451, 4006612972, 4006687273, 4001723271, 4000868378, 4007977563, 4006630700, 4007978300, 4007978740, 4007977605, 4007977956, 4007977494, 4000556131, 4007144526, 4001760096, 4001152505, 4007946039, 4006906070, 4001035238, 4006200797, 4533419, 4001998251, 3954297, 4000893855, 4006881065, 4001010541, 4451055, 4006894790, 4006321004, 4006428843, 4001653665, 4001595654, 4001790050, 4007977668, 4003837856, 4007976110, 4006452852, 4001281428, 5482734, 4001174459, 4001706520, 4001849533, 4001728899, 4001444683, 4000885061, 4001619283, 4001627811, 4001544392, 4007125540, 4005913170, 4006263568, 4001531526, 4007400766, 4007585969, 4000924883, 4886878]
     companies = companies + [4886878]
+    companies = [4886878, 3855530, 4008235027]
     companies = list(set(companies))
     # companies = [4007568555]
     # companies = [4001178549, 4001394153, 749, 4046495, 4001156549, 4001756407, 867703, 4006491007, 3595755,
@@ -79,14 +82,15 @@ def run_small_test(ecvr):
     for comp in companies:
         print('insert', comp)
         ecvr.update_units([comp])
+    
     # is a person
-    #people = [4000034553, 4004192836, 4004194126, 4000145625, 4005983489]
+    people = [4000034553, 4004192836, 4004194126, 4000145625, 4005983489]
     # # people = [4000145625]
-    #print('insert people')
-    #ecvr.update_units(people)
-    #print('insert penhed')
-    #penhed = [4002535375, 4002241948, 4003231318]
-    #ecvr.update_units(penhed)
+    print('insert people')
+    ecvr.update_units(people)
+    print('insert penhed')
+    penhed = [4002535375, 4002241948, 4003231318]
+    ecvr.update_units(penhed)
 
 
 def run_delete_test(mycvr):
@@ -162,7 +166,8 @@ if __name__ == '__main__':
         create_views()
     if args.fill_dawa:
         info_print('Download and fill dawa address tables')
-        fill_dawa()
+        assert False, "not currently working"
+        #fill_dawa()
     cvr = CvrConnection(update_address=args.enable_add)
     if args.small_test:
         logging.basicConfig(level=logging.INFO)

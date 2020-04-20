@@ -416,16 +416,7 @@ def get_erst_upload_employment_month():
     mfp = UploadEmployment(mnd_field, mnd_keys, table, mnd_columns)
     return mfp
 
-
-
-def get_employment_parsers():
-    # vp = ParserList()
-    # vp.add_listener(get_upload_employment_year())
-    # vp.add_listener(get_upload_employment_quarter())
-    # vp.add_listener(get_upload_employment_month())
-    # vp.add_listener(get_erst_upload_employment_year())
-    # vp.add_listener(get_erst_upload_employment_quarter())
-    # vp.add_listener(get_erst_upload_employment_month())
+def get_employment_list():
     vp = []
     vp.append(get_upload_employment_year())
     vp.append(get_upload_employment_quarter())
@@ -433,6 +424,17 @@ def get_employment_parsers():
     vp.append(get_erst_upload_employment_year())
     vp.append(get_erst_upload_employment_quarter())
     vp.append(get_erst_upload_employment_month())
+    return vp
+
+
+def get_employment_parser():
+    vp = ParserList()
+    vp.add_listener(get_upload_employment_year())
+    vp.add_listener(get_upload_employment_quarter())
+    vp.add_listener(get_upload_employment_month())
+    vp.add_listener(get_erst_upload_employment_year())
+    vp.add_listener(get_erst_upload_employment_quarter())
+    vp.add_listener(get_erst_upload_employment_month())
     return vp
 
 
