@@ -10,7 +10,7 @@ import tqdm
 import logging
 import threading
 from .field_parser import utc_transform
-from . import config, create_session, engine
+from . import config, create_session, engine, setup_database_connection
 from . import alchemy_tables
 from .bug_report import add_error
 from . import data_scanner
@@ -649,7 +649,6 @@ def cvr_update_producer(queue, lock):
     :param queue: multiprocessing.Queue
     :param lock: multiprocessing.Lock
     """
-    engine.dispose()
     t0 = time.time()
 
     logger = logging.getLogger('producer')
@@ -668,6 +667,13 @@ def cvr_update_producer(queue, lock):
     logger.addHandler(fh)
     with lock:
         logger.info('Starting producer => {}'.format(os.getpid()))
+
+    if not engine.is_none():        
+        engine.dispose()        
+    else:
+        setup_database_connection()
+        with lock:
+            logger.info('setup databaseconnection - lost in spawn/fork')    
 
     try:
         cvr = CvrConnection()
@@ -769,11 +775,9 @@ def cvr_update_consumer(queue, lock):
     :param lock: multiprocessing.Lock
     :return:
     """
-    engine.dispose()
+
     t0 = time.time()
 
-    with lock:
-        print('Starting consumer  => {0}'.format(os.getpid()))
 
     logger = logging.getLogger('consumer-{0}'.format(os.getpid()))
     logger.setLevel(logging.DEBUG)
@@ -791,6 +795,16 @@ def cvr_update_consumer(queue, lock):
     logger.addHandler(fh)
     logger.info('Starting consumer => {}'.format(os.getpid()))
 
+    if not engine.is_none():        
+        engine.dispose()        
+    else:
+        setup_database_connection()
+        with lock:
+            logger.info('setup database connection - lost in spawn/fork')    
+
+
+
+    
     cvr = CvrConnection()
     # enh_samtid_map = CvrConnection.make_samtid_dict()
     # dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=CvrConnection.dummy_date)

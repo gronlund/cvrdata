@@ -27,6 +27,8 @@ class DefaultEngineProxy:
     def __hash__(self):
         return _engine.__hash__()
 
+    def is_none(self):
+        return _engine is None
 
 class DefaultSessionProxy:
     def __getattr__(self, item):
@@ -46,6 +48,9 @@ class DefaultSessionProxy:
 
     def __call__(self, *args, **kwargs):
         return _session(*args, **kwargs)
+
+    def is_none(self):
+        return _session is None
 
 
 config_fields = ['host', 'port', 'user',
