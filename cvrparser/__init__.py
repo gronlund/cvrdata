@@ -80,8 +80,6 @@ def interactive_configure_connection():
     print('Please enter cvr elasticsearch connection information below.')
     cvr_user = input('CVR User: ')
     cvr_passwd = getpass.getpass()
-    print('Please enter path where cvr data can be downloaded')
-    # data_path = input('Data Path: ')
     config_values = {
         'Global': dict(
             host=host, port=port, user=user, passwd=passwd, database=database,
