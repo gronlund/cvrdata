@@ -7,7 +7,7 @@
 # cvrparser/cvr_showdb.py: 2
 # cvrparser/data_scanner.py: 1
 # cvrparser/sql_help.py: 1
-SQLAlchemy >= 1.1.15
+SQLAlchemy >= 1.4.0
 
 # cvrparser/cvr_download.py: 1
 # cvrparser/elastic_cvr_extract.py: 1
