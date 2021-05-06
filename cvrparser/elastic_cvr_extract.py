@@ -28,7 +28,8 @@ def update_all_mp(workers=1):
     #logger.setLevel(logging.INFO)
     # add two handlers here
     lock = multiprocessing.Lock()
-    queue = multiprocessing.Queue(maxsize=10000)  # maxsize=1000*1000*20)
+    queue_size = 20000
+    queue = multiprocessing.Queue(maxsize=queue_size)  # maxsize=1000*1000*20)
     prod = multiprocessing.Process(target=cvr_update_producer, args=(queue, lock))
     # prod.daemon = True
     prod.start()
@@ -396,10 +397,14 @@ class CvrConnection(object):
         """
         data_parser = data_scanner.DataParser(_type=enh_type)
         address_parser = self.address_parser_factory.create_parser(self.update_address)
+        #print('parse data')
         data_parser.parse_data(dicts)
+        #print('parse dynamic data')
         data_parser.parse_dynamic_data(dicts)
+        #print('parse address')
         address_parser.parse_address_data(dicts)
         # print('address data inserted/skipped - start static')
+        #print('parse static data')
         data_parser.parse_static_data(dicts)
         # print('static parsed')
 
@@ -685,13 +690,16 @@ def cvr_update_producer(queue, lock):
 
         generator = search.scan()
         full_update = False
+        i = 0
         for obj in tqdm.tqdm(generator):
             try:
+                i = i+1
                 dat = obj.to_dict()
                 keys = dat.keys()
                 dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
                 if len(dict_type_set) != 1:
-                    logger.debug('BAD DICT DOWNLOADED \n{0} {1}'.format(dat, dict_type_set))
+                    print(dict_type_set)
+                    logger.debug('BAD DICT DOWNLOADED CVR UPDATE PRODUCER \n{0} {1}'.format(dat, dict_type_set))                    
                     continue
                 dict_type = dict_type_set.pop()
                 dat = dat[dict_type]
@@ -712,11 +720,12 @@ def cvr_update_producer(queue, lock):
 
                 for repeat in range(100):
                     try:
-                        queue.put((dict_type, dat, full_update), timeout=120)
+                        queue.put((dict_type, dat, full_update), timeout=5)
                         break
                     except Exception as e:
                         logger.debug('Producer timeout failed {0} - retrying {1} - {2}'.format(str(e), enhedsnummer, dict_type), exc_info=1)
-
+                if (i % 100 == 0):
+                    logger.debug('{0} rounds'.format(i))                    
             except Exception as e:
                 logger.debug('Producer exception:', e, obj)
                 print('continue producer')
@@ -810,19 +819,23 @@ def cvr_update_consumer(queue, lock):
     # dummy = CvrConnection.update_info(samtid=-1, sidstopdateret=CvrConnection.dummy_date)
     dicts = {x: list() for x in CvrConnection.source_keymap.values()}
     emp_dicts = {x: list() for x in CvrConnection.source_keymap.values()}
+    i = 0
     while True:
         # try:
+        i = i+1
         while True:
             try:
-                obj = queue.get(timeout=300)
+                #logger.info('get data {0}'.format(i))
+                obj = queue.get(timeout=5)
                 break
             except Exception as e:
-                print('consumer timeout reached - retrying', e)
+                logger.debug('consumer timeout reached - retrying', e)
         try:  # move this
             if obj == cvr.cvr_sentinel:
-                print('sentinel found - Thats it im out of here')
+                logger.info('sentinel found - Thats it im out of here')
                 # queue.put(obj)
                 break
+            #logger.info('Got some data {0}'.format(i))
             assert len(obj) == 3, 'obj not length 2 - should be tuple of length 3'
             dict_type = obj[0]
             dat = obj[1]
@@ -833,14 +846,19 @@ def cvr_update_consumer(queue, lock):
                 dicts_to_use =  emp_dicts
             dicts_to_use[dict_type].append(dat)
             if len(dicts_to_use[dict_type]) >= cvr.update_batch_size:
+                #logger.info('try to insert {0}'.format(i))
+                t0 = time.time()
                 if full_update:
                     cvr.update(dicts_to_use[dict_type], dict_type)
                 else:
                     cvr.update_employment_only(dicts_to_use[dict_type], dict_type)
-                dicts_to_use[dict_type].clear()            
+                used_time = time.time() - t0
+                #logger.info('{0} time used - data inserted {1}'.format(used_time, len(dicts_to_use[dict_type])))
+                dicts_to_use[dict_type].clear()
         except Exception as e:
             logger.debug('Exception in consumer: {0} - {1}'.format(os.getpid(), str(e)), exc_info=1)
-            print('insert one by one')            
+            logger.debug('insert one by one')
+            print('Exception in consumer: {0} - {1}'.format(os.getpid(), str(e)), exc_info=1)
             for enh_type, _dicts in dicts.items():
                 for one_dict in _dicts:
                     logger.debug('inserting {0}'.format(one_dict['enhedsNummer']))
@@ -848,11 +866,14 @@ def cvr_update_consumer(queue, lock):
                         if full_update:
                             cvr.update([one_dict], enh_type)
                         else:
-                            print('error in emp only')
+                            logger.debug('error in emp only')
                             cvr.update_employment_only([one_dict], enh_type)
                     except Exception as e:
                         logger.debug('one insert error\n{0}'.format(str(e)))
                         logger.debug('enh failed: {0}'.format(one_dict['enhedsNummer']))
+        #if i % 1000 == 0:
+        #    logger.info('Consumer {0} rounds completed'.format(i))
+
         # except Exception as e:
         #     print('Consumer exception', e)
         #     import pdb

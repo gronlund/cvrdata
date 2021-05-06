@@ -132,11 +132,18 @@ class ParserList(ParserInterface):
 
     def insert(self, data):
         for l in self.listeners:
+            #print('inserting in', type(l))
             l.insert(data)
+            #print('inserting done')
 
     def commit(self):
         # print('Threaded commits')
-
+        #for l in self.listeners:
+        #    #print('commiting in', type(l))
+        #    l.commit()
+        #    #print('commiting done')
+        #return
+        
         def worker(list_index):
             # print('worker', list_index)
             self.listeners[list_index].commit()

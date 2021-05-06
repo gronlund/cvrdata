@@ -100,23 +100,27 @@ class SessionUpdateCache(SessionCache):
         """
         if len(self.cache) == 0:
             return
-        # print('update cache', self.table_class, 'pid', os.getpid())
+        #print('update cache', self.table_class, 'pid')
         self.cache = sorted(self.cache)
+        #print(self.cache)
         keys = [x for (x, y) in self.cache]
         # delete all keys
         flatten_dat = [x+y for (x, y) in self.cache]
         z = [{x: y for (x, y) in zip(self.fields, c)} for c in flatten_dat]
         session = create_session()
-        while True:
+        for i in range(2):
             try:
-                session.query(self.table_class).with_lockmode('update').filter(tuple_(*self.key_columns).in_(keys)).delete(synchronize_session=False)
+                session.query(self.table_class).filter(tuple_(*self.key_columns).in_(keys)).with_for_update().delete(synchronize_session=False)
+                
                 session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
                 session.commit()
+                #success = True
                 break
             except Exception as e:
+                print('session update failure', e)
                 session.rollback()
                 add_error('SessionUpdateCache: \n{0}'.format(e))
-                #  logging.info('Deadlock issue in delete insert - RETRY\n{0}'.format(e))
+                #logging.info('Deadlock issue in delete insert - RETRY\n{0}'.format(e))
             finally:
                 session.close()
         self.cache = []

@@ -18,10 +18,13 @@ def insert_values(dicts, parser):
     """
 
     for _, d in enumerate(dicts):
+        #print('insert d', d)
         parser.insert(d)
         # if ((j+1) % 1001) == 0:
         #     print('{0} objects parsed'.format(j))
+    #print('commit')
     parser.commit()
+    #print('commit done')
 
 
 def get_company_data_parsers(key_store):
