@@ -121,6 +121,7 @@ class Mapping(object):
                 print('lens compared', len(res), len(new))
                 print('difference new_keys.difference(self.unmapped)', new_keys.difference(self.unmapped))
                 print('difference self.unmapped.difference(new_keys)', self.unmapped.difference(new_keys))
+                add_error('Mapping update fail')
                 assert False, "Key errors related to trailing white space mysql issue most likely"
             missing = self.unmapped - set(new.keys())
             self.mapped.update(new)

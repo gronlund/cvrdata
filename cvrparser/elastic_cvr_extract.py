@@ -858,7 +858,7 @@ def cvr_update_consumer(queue, lock):
         except Exception as e:
             logger.debug('Exception in consumer: {0} - {1}'.format(os.getpid(), str(e)), exc_info=1)
             logger.debug('insert one by one')
-            print('Exception in consumer: {0} - {1}'.format(os.getpid(), str(e)), exc_info=1)
+            print('Exception in consumer: {0} - {1}'.format(os.getpid(), str(e)))
             for enh_type, _dicts in dicts.items():
                 for one_dict in _dicts:
                     logger.debug('inserting {0}'.format(one_dict['enhedsNummer']))

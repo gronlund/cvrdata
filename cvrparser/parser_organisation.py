@@ -281,7 +281,7 @@ class CompanyOrganisationMemberParser(ParserInterface):
         for relation in relations:
             deltager = relation['deltager']
             if deltager is None:
-                add_error('Deltager is None: {0}'.format(enhedsnummer_company))
+                add_error('CompanyOrganisationMemberParser - Deltager is None: {0}'.format(enhedsnummer_company))
                 continue
             enhedsnummer_deltager = deltager['enhedsNummer']
             # kontorsted = relation['kontorsteder']
