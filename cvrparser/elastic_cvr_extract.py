@@ -723,7 +723,7 @@ def cvr_update_producer(queue, lock):
                         queue.put((dict_type, dat, full_update), timeout=120)
                         break
                     except Exception as e:
-                        logger.debug('Producer timeout failed {0} - retrying {1} - {2}'.format(str(e), enhedsnummer, dict_type), exc_info=1)
+                        logger.debug('Producer timeout failed {0} - retrying {1} - {2} - repeat: {3}'.format(str(e), enhedsnummer, dict_type, repeat))
                 if (i % 10000 == 0):
                     logger.debug('{0} rounds'.format(i))                    
             except Exception as e:
@@ -856,7 +856,7 @@ def cvr_update_consumer(queue, lock):
                 #logger.info(' - {0} time used - data inserted {1}'.format(used_time, len(dicts_to_use[dict_type])))
                 dicts_to_use[dict_type].clear()
         except Exception as e:
-            logger.debug('Exception in consumer: {0} - {1}'.format(os.getpid(), str(e)), exc_info=1)
+            logger.debug('Exception in consumer: {0} - {1}'.format(os.getpid(), str(e)))
             logger.debug('insert one by one')
             print('Exception in consumer: {0} - {1}'.format(os.getpid(), str(e)))
             for enh_type, _dicts in dicts.items():
