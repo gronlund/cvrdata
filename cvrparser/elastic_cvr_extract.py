@@ -718,16 +718,16 @@ def cvr_update_producer(queue, lock):
                         continue
                     full_update = False
 
-                for repeat in range(100):
+                for repeat in range(1000):
                     try:
-                        queue.put((dict_type, dat, full_update), timeout=5)
+                        queue.put((dict_type, dat, full_update), timeout=120)
                         break
                     except Exception as e:
                         logger.debug('Producer timeout failed {0} - retrying {1} - {2}'.format(str(e), enhedsnummer, dict_type), exc_info=1)
-                if (i % 100 == 0):
+                if (i % 10000 == 0):
                     logger.debug('{0} rounds'.format(i))                    
             except Exception as e:
-                logger.debug('Producer exception:', e, obj)
+                logger.debug('Producer exception: e: {0} - obj: {1}'.format(e, obj))
                 print('continue producer')
                 # print(obj)
             # if ((i+1) % 10000) == 0:
@@ -736,8 +736,10 @@ def cvr_update_producer(queue, lock):
     except Exception as e:
         print('*** generator error ***', file=sys.stderr)
         logger.debug('generator error: {0}'.format(str(e)))
-        logger.info(e)
-        logger.info(type(e))
+        print(e)
+        print(type(e))
+        #logger.info(e)
+        #logger.info(type(e))
         return
     # Synchronize access to the console
     with lock:
@@ -810,9 +812,6 @@ def cvr_update_consumer(queue, lock):
         setup_database_connection()
         with lock:
             logger.info('setup database connection - lost in spawn/fork')    
-
-
-
     
     cvr = CvrConnection()
     # enh_samtid_map = CvrConnection.make_samtid_dict()
@@ -826,10 +825,11 @@ def cvr_update_consumer(queue, lock):
         while True:
             try:
                 #logger.info('get data {0}'.format(i))
-                obj = queue.get(timeout=5)
+                obj = queue.get(timeout=10)
                 break
             except Exception as e:
-                logger.debug('consumer timeout reached - retrying', e)
+                logger.debug('Consumer timeout reached - retrying - e: {0}'.format(e))
+                #print(e)
         try:  # move this
             if obj == cvr.cvr_sentinel:
                 logger.info('sentinel found - Thats it im out of here')
@@ -853,7 +853,7 @@ def cvr_update_consumer(queue, lock):
                 else:
                     cvr.update_employment_only(dicts_to_use[dict_type], dict_type)
                 used_time = time.time() - t0
-                #logger.info('{0} time used - data inserted {1}'.format(used_time, len(dicts_to_use[dict_type])))
+                #logger.info(' - {0} time used - data inserted {1}'.format(used_time, len(dicts_to_use[dict_type])))
                 dicts_to_use[dict_type].clear()
         except Exception as e:
             logger.debug('Exception in consumer: {0} - {1}'.format(os.getpid(), str(e)), exc_info=1)
@@ -871,8 +871,8 @@ def cvr_update_consumer(queue, lock):
                     except Exception as e:
                         logger.debug('one insert error\n{0}'.format(str(e)))
                         logger.debug('enh failed: {0}'.format(one_dict['enhedsNummer']))
-        #if i % 1000 == 0:
-        #    logger.info('Consumer {0} rounds completed'.format(i))
+        if i % 10000 == 0:
+            logger.debug('Consumer {0} rounds completed and alive - '.format(i))
 
         # except Exception as e:
         #     print('Consumer exception', e)

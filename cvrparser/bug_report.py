@@ -1,5 +1,5 @@
 import logging
-
+import os
 
 
 def add_error(mess):
@@ -9,4 +9,5 @@ def add_error(mess):
     :param enh:
     :return:
     """
-    logging.debug(mess)
+    logger = logging.getLogger('consumer-{0}'.format(os.getpid()))
+    logger.debug(mess)

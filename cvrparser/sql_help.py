@@ -2,7 +2,8 @@ from sqlalchemy import tuple_
 from . import create_session
 from contextlib import closing
 from .bug_report import add_error
-
+import os
+import logging
 
 class MyCache(object):
     """ Change to use async inserts perhaps - that would be neat
@@ -72,6 +73,8 @@ class SessionKeystoreCache(SessionCache):
                 session.commit()
                 break
             except Exception as e:
+                #logger = logging.getLogger('consumer-{0}'.format(os.getpid()))
+                #logger.debug('Session Keystore Cache Error: e: {0}'.format(e)) 
                 add_error('SessionKeyStoreCache: \n{0}'.format(e))
                 session.rollback()
             finally:
@@ -117,6 +120,8 @@ class SessionUpdateCache(SessionCache):
                 #success = True
                 break
             except Exception as e:
+                #logger = logging.getLogger('consumer-{0}'.format(os.getpid()))
+                #logger.debug('Session Updace Cache Error: e: {0}'.format(e)) 
                 print('session update failure', e)
                 session.rollback()
                 add_error('SessionUpdateCache: \n{0}'.format(e))
