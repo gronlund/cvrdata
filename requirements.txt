@@ -9,6 +9,7 @@
 # cvrparser/sql_help.py: 1
 SQLAlchemy >= 1.4.0
 
+
 # cvrparser/cvr_download.py: 1
 # cvrparser/elastic_cvr_extract.py: 1
 elasticsearch >= 6.0.0,<7.0.0
@@ -38,3 +39,6 @@ tqdm >= 4.19.4
 # cvrparser/cvr_download.py: 4
 # cvrparser/elastic_cvr_extract.py: 5
 ujson == 1.35
+
+lxml >= 4.7.1
+bs4  >= 0.0.1
