@@ -72,14 +72,8 @@ class RegistrationConnection(object):
     cvr_nothing = 'NOTHING_RETURNED'
 
     def __init__(self):
-        """ Setup everything needed for elasticsearch
-        connection to Danish Business Authority for CVR data extraction
-        consider moving elastic search connection into __init__
+        """ Setup everything needed for elasticsearch connection to Danish Business Authority for data extraction
 
-        Args:
-        -----
-          :param update_address: bool,
-        determine if parse and insert address as well (slows it down)
         """
         #http://distribution.virk.dk/registreringstekster/registreringstekst/_search
         self.url = 'http://distribution.virk.dk:80'
@@ -153,7 +147,6 @@ class RegistrationConnection(object):
         data_parser = data_scanner.RegistrationParser()
         data_parser.parse_data(registrations)
 
-
     @staticmethod
     def insert_all():
         """ Interface call to start the producer consumder process 
@@ -218,7 +211,6 @@ def reg_producer(queue, lock):
             try:
                 i = i+1
                 dat = obj.to_dict()
-
                 if dat['offentliggoerelseId'] in enh_samtid_map:
                     continue
                 for repeat in range(20):
@@ -259,7 +251,7 @@ def reg_consumer(queue, lock):
     """
 
     t0 = time.time()
-    name = 'reg-consumer-{0}'.format(os.getpid())
+    name = 'Reg-Consumer-{0}'.format(os.getpid())
     logger = add_logging(name)
     logger.info('Starting => {}'.format(name))
     if not engine.is_none():        
