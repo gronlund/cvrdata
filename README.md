@@ -38,6 +38,10 @@ To create the database tables use
 ``python -m cvrparser dbsetup -t``
 
 ## Get Data
-To update the database run
+To update the cvr database run
 
 ``python -m cvrparser update ``
+
+To insert DBA registrations run
+
+``python -m cvrparser get_reg ``
