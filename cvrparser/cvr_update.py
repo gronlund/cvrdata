@@ -169,36 +169,4 @@ if __name__ == '__main__':
         assert False, "not currently working"
         #fill_dawa()
     cvr = CvrConnection(update_address=args.enable_add)
-    if args.small_test:
-        logging.basicConfig(level=logging.INFO)
-        info_print('Running small test')
-        run_small_test(cvr)
-    if args.delete_test:
-        info_print('Run delete test')
-        run_delete_test(cvr)
-    if args.update_all:
-        info_print('Update All')
-        cvr.update_all(args.resume)
-    if args.enh is not None:
-        info_print('Update specific enhedsnummer:')
-        cvr.update_units([args.enh])
-    if args.time:
-        pr = cProfile.Profile()
-        pr.enable()
-        filename = args.time
-        print('testing with file', filename)
-        cvr.update_from_mixed_file(filename, force=True)
-        # cvr.update_from_mixed_file('/Users/jallan/tmp/cvr_update.json', force=True)
-        pr.disable()
-        s = io.StringIO()
-        sortby = 'cumtime'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
-        print('something')
-    if args.threading:
-        # warnings.simplefilter("ignore")
-        logging.basicConfig(level=logging.INFO)
-        # logging.getLogger('elasticsearch').setLevel(logging.DEBUG)
-        # logging.getLogger('urllib3').setLevel(logging.DEBUG)
-        test_producer()
+    

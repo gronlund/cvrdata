@@ -23,10 +23,6 @@ import sys
 
 def update_all_mp(workers=1):
     # https://docs.python.org/3/howto/logging-cookbook.html
-    #multiprocessing.log_to_stderr()
-    #logger = logging.getLogger('cvrparser')
-    #logger.setLevel(logging.INFO)
-    # add two handlers here
     lock = multiprocessing.Lock()
     queue_size = 20000
     queue = multiprocessing.Queue(maxsize=queue_size)  # maxsize=1000*1000*20)
@@ -75,6 +71,7 @@ class CvrConnection(object):
                      'produktionsenhed': 'VrproduktionsEnhed'}
     update_info = namedtuple('update_info', ['samtid', 'sidstopdateret'])
     cvr_sentinel = 'CVR_SENTINEL'
+    cvr_nothing = 'NOTHING_RETURNED'
 
     def __init__(self, update_address=False):
         """ Setup everything needed for elasticsearch
@@ -673,7 +670,7 @@ def cvr_update_producer(queue, lock):
     with lock:
         logger.info('Starting producer => {}'.format(os.getpid()))
 
-    if not engine.is_none():        
+    if not engine.is_none():
         engine.dispose()        
     else:
         setup_database_connection()
@@ -718,12 +715,14 @@ def cvr_update_producer(queue, lock):
                         continue
                     full_update = False
 
-                for repeat in range(1000):
+                for repeat in range(20):
                     try:
                         queue.put((dict_type, dat, full_update), timeout=120)
                         break
                     except Exception as e:
                         logger.debug('Producer timeout failed {0} - retrying {1} - {2} - repeat: {3}'.format(str(e), enhedsnummer, dict_type, repeat))
+                        if repeat > 10:
+                            raise(e)
                 if (i % 10000 == 0):
                     logger.debug('{0} rounds'.format(i))                    
             except Exception as e:
@@ -821,19 +820,21 @@ def cvr_update_consumer(queue, lock):
     i = 0
     while True:
         # try:
-        i = i+1
-        while True:
+        i = i+1        
+        for repeats in range(30):
             try:
                 #logger.info('get data {0}'.format(i))
                 obj = queue.get(timeout=10)
                 break
             except Exception as e:
-                logger.debug('Consumer timeout reached - retrying - e: {0}'.format(e))
-                #print(e)
+                logger.debug('Consumer timeout reached - repeats {1}, retrying - e: {0} '.format(e, repeats))
         try:  # move this
             if obj == cvr.cvr_sentinel:
                 logger.info('sentinel found - Thats it im out of here')
                 # queue.put(obj)
+                break
+            elif obj == cvr.cvr_nothing:
+                logger.debug('Nothing returned for consumer in long time - breaking')
                 break
             #logger.info('Got some data {0}'.format(i))
             assert len(obj) == 3, 'obj not length 2 - should be tuple of length 3'
@@ -878,14 +879,13 @@ def cvr_update_consumer(queue, lock):
         #     print('Consumer exception', e)
         #     import pdb
         #     pdb.set_trace()
-
+    logger.debug('Consumer empty cache')
     for enh_type, _dicts in dicts.items():
         if len(_dicts) > 0:
             cvr.update(_dicts, enh_type)
     for enh_type, _dicts in emp_dicts.items():
         if len(_dicts) > 0:
             cvr.update_employment_only(_dicts, enh_type)
-        
     t1 = time.time()
     with lock:
         print('Consumer Done. Exiting...{0} - time used {1}'.format(os.getpid(), t1-t0))

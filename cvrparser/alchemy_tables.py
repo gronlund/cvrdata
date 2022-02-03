@@ -5,7 +5,7 @@ from sqlalchemy import (BigInteger, Column, DateTime,
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.automap import automap_base
 from collections import namedtuple
-from . import engine
+from . import engine as proxy_engine
 
 Base = declarative_base()
 metadata = Base.metadata
@@ -15,11 +15,12 @@ default_end_date = text("'2200-01-01 00:00:00'")
 
 class DBModel(object):
     def __init__(self):
-        self.engine = engine
-        metadata.reflect(bind=engine, views=True)
+        self.proxy_engine = proxy_engine
+        metadata.reflect(bind=proxy_engine.get(), views=True)
+        #metadata.reflect(bind=proxy_engine)
         Base = automap_base(metadata=metadata)
         Base.prepare()
-        self.engine = engine
+        #self.proxy_engine = proxy_engine
         self.tables = namedtuple('tables', metadata.tables.keys())(*metadata.tables.values())
         self.tables_dict = self.tables._asdict()
         self.classes = Base.classes
@@ -393,6 +394,26 @@ class Virksomhedsstatus(Base):
                                nullable=False, unique=True)
 
 
+class Registration(Base):
+    __tablename__ = 'Registration'
+    registrationid = Column(BigInteger, primary_key=True)
+    adresse = Column(String(255, collation='utf8mb4_bin'))
+    cvrnummer = Column(Integer)
+    hovednavn = Column(String(255, 'utf8mb4_bin'))
+    kommunekode = Column(Integer)
+    offentliggoerelseid = Column(Integer, unique=True)
+    offentliggoerelsetidsstempel = Column(DateTime)
+    opdateret = Column(DateTime)
+    oprettet =  Column(DateTime)
+    postnummer = Column(Integer)
+    registreringtidsstempel = Column(DateTime)
+    sidstopdateret = Column(DateTime)
+    tekst  = Column(Text(2**30-1, collation='utf8mb4_bin'))
+    ren_tekst  = Column(Text(2**30-1, collation='utf8mb4_bin'))
+    virksomhedsformkode = Column(Integer)
+    virksomhedsregistreringstatusser =  Column(String(255, collation='utf8mb4_bin'))
+    
+
 class CreateDatabase(object):
     def __init__(self):
         self.cvr_tables = [Aarsbeskaeftigelse,
@@ -412,6 +433,7 @@ class CreateDatabase(object):
                            Organisation,
                            Person,
                            Produktion,
+                           Registration,
                            Regnummer,
                            SpaltningFusion,
                            Statuskode,
@@ -426,12 +448,12 @@ class CreateDatabase(object):
         pass    
 
     def create_tables(self):
-        # base.metadata.create_all(engine, tables=[x.__table__ for x in tables])
+        # base.metadata.create_all(proxy_engine, tables=[x.__table__ for x in tables])
         print('Create Tables')
         for x in self.cvr_tables:
             try:
                 print('Creating Table {0}'.format(x.__tablename__))
-                x.__table__.create(engine)
+                x.__table__.create(proxy_engine)
             except Exception as e:
                 print('Create Table Exception: ', x.__tablename__)
                 print('Probably already exists')
@@ -476,7 +498,7 @@ class CreateDatabase(object):
         for index in query_indexes:
             print('Creating index', index.name)
             try:
-                index.create(engine)
+                index.create(proxy_engine)
             except Exception as e:
                 print(e)
 
@@ -547,7 +569,7 @@ class CreateDatabase(object):
         for index in indexes:
             print('Creating index', index.name)
             try:
-                index.create(engine)
+                index.create(proxy_engine)
             except Exception as e:
                 print('Index construction failed', index.name)
                 print('Probably already exists')
@@ -557,4 +579,4 @@ class CreateDatabase(object):
     def create_my_sql_text_index(self, my_class, full_text_columns):
         mysql_full_text_command = """ALTER TABLE {0.__tablename__} ADD FULLTEXT ({1})"""
         mysql_command = mysql_full_text_command.format(my_class, ", ".join(column for column in full_text_columns))
-        engine.execute(mysql_command)
+        proxy_engine.execute(mysql_command)

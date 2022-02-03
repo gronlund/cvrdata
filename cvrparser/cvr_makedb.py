@@ -33,7 +33,7 @@ class MakeCvrDatabase(object):
 
     @staticmethod
     def drop_views_and_tables():
-        print('')
+        print('not doing much')
 
     @staticmethod
     def download_dawa():

@@ -1,4 +1,5 @@
 import pytz
+from bs4 import BeautifulSoup
 import dateutil
 import datetime
 from dateutil.parser import parse as date_parse
@@ -124,7 +125,7 @@ class Parser(ParserInterface):
 
 class ParserList(ParserInterface):
     """ Simple class for storing list of parser objects
-    using threading for commits. Consider bounding thread count. May not matter.
+        using threading for commits. Consider bounding thread count. May not matter.
     """
 
     def __init__(self):
@@ -132,20 +133,11 @@ class ParserList(ParserInterface):
 
     def insert(self, data):
         for l in self.listeners:
-            #print('inserting in', type(l))
             l.insert(data)
-            #print('inserting done')
 
     def commit(self):
-        # print('Threaded commits')
-        #for l in self.listeners:
-        #    #print('commiting in', type(l))
-        #    l.commit()
-        #    #print('commiting done')
-        #return
         
         def worker(list_index):
-            # print('worker', list_index)
             self.listeners[list_index].commit()
 
         threads = []
@@ -155,8 +147,6 @@ class ParserList(ParserInterface):
             t.start()
         for t in threads:
             t.join()
-
-
 
     def add_listener(self, obj):
         self.listeners.append(obj)
@@ -469,6 +459,76 @@ class AttributParser(Parser):
         [self.db.insert(x) for x in set(upload)]
 
 
+class RegistrationParser(Parser):
+    """ Class for parsing raw registrations from Danish Business Authority 
+     Example data
+     {        'adresse': 'Kompagnistræde 20C, 1208 København K',
+              'cvrNummer': '35865497',
+              'hovednavn': 'GOMORE ApS',
+              'kommunekode': 101,
+              'offentliggoerelseId': 27147181,
+              'offentliggoerelseTidsstempel': '2019-05-15T11:43:00.528Z',
+              'opdateret': '2019-05-15T11:43:00.530Z',
+              'oprettet': '2019-05-15T11:43:00.530Z',
+              'postnummer': 1208,
+              'registreringTidsstempel': '2019-05-15T11:43:00.000Z',
+              'sidstOpdateret': '2019-05-15T11:43:05.537Z',
+              'tekst': '<?xml version="1.0" encoding="UTF-8"?>\n'
+                       '<html>\n'
+                       '<head />\n'
+                       '<body>Vedtægter ændret: 26.03.2019\n'
+                       '<br />\n'
+                       '</body></html>',
+              'virksomhedsformkode': '80',
+              'virksomhedsregistreringstatusser': ['ANDET']},
+
+    """
+    keys = ['adresse', 'cvrNummer', 'hovednavn', 'kommunekode', 'offentliggoerelseId', 'offentliggoerelseTidsstempel',  'opdateret', 'oprettet', 'postnummer', 'registreringTidsstempel', 'sidstOpdateret', 'tekst', 'ren_tekst', 'virksomhedsformkode',  'virksomhedsregistreringstatusser']
+    timestamps =  ['offentliggoerelseTidsstempel',  'opdateret', 'oprettet', 'registreringTidsstempel', 'sidstOpdateret']
+    
+    def __init__(self):
+        table = alchemy_tables.Registration
+        t = table
+        #print(t['cvrNummer'])
+        #columns = [t[x.lower()] for x in RegistrationParser.keys]
+        columns = [t.adresse, t.cvrnummer, t.hovednavn, t.kommunekode, t.offentliggoerelseid ,t.offentliggoerelsetidsstempel, t.opdateret, t.oprettet, t.postnummer, t.registreringtidsstempel, t.sidstopdateret, t.tekst, t.ren_tekst, t.virksomhedsformkode, t.virksomhedsregistreringstatusser]
+        super().__init__(table, columns, keystore=None)
+
+    def insert(self, data):
+        if type(data) is list:
+            for x in data:
+                self.insert(x)
+            return                
+        assert type(data) is dict
+        L = data['virksomhedsregistreringstatusser']
+        stat = self.parse_status(L)
+        data['virksomhedsregistreringstatusser'] =  stat
+        if type(data['tekst']) is str:
+            data['ren_tekst'] = self.parse_text(data['tekst'])
+        else:
+            data['ren_tekst'] = None
+            
+        for z in RegistrationParser.timestamps:
+            data[z] = utc_transform(data[z]) if data[z] is not None else None
+        data_tuple = tuple([data[key] for key in RegistrationParser.keys])
+        self.db.insert(data_tuple)
+
+
+    def parse_status(self, L):
+        if L is None: return None
+        if type(L) is str: return L
+        assert type(L) is list
+        elements = [x for x in L if type(x) is str]
+        #bad_elements = [x for x in L if not type(x) is str]
+        #print('bad_elements', bad_elements, '\n', data['cvrNummer'])
+        if len(elements) == 0: return None
+        return ' '.join(elements)
+        
+    def parse_text(self, text):
+        z = BeautifulSoup(text, "lxml").get_text(separator=' ')
+        return '\n'.join([x.strip() for x in z.split('\n')])
+    
+        
 class AddressParser(Parser):
     """ Simple wrapper class for parsing adresses """
 

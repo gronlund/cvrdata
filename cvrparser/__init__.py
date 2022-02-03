@@ -30,6 +30,9 @@ class DefaultEngineProxy:
     def is_none(self):
         return _engine is None
 
+    def get(self):
+        return _engine
+
 class DefaultSessionProxy:
     def __getattr__(self, item):
         return getattr(_session, item)
@@ -132,6 +135,8 @@ def setup_database_connection(config_name='Global'):
 
 engine = DefaultEngineProxy()
 Session = DefaultSessionProxy()
+#engine = None
+#Session = None
 config = dict()
 
 

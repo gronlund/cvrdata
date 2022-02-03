@@ -226,7 +226,16 @@ class DataParser(object):
     def parse_employment(self, dicts):
         insert_values(dicts, self.employment_parser())
 
+class RegistrationParser():
 
+    def __init__(self):
+        self.parser = field_parser.RegistrationParser()
+
+    def parse_data(self, dicts):
+        insert_values(dicts, self.parser)
+    
+
+    
 class AddressParserFactory(object):
     """ Simple Factory for making an adresse parser """
     def __init__(self):

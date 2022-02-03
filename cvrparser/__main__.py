@@ -5,6 +5,7 @@ from . import (interactive_ensure_config_exists,
                interactive_configure_connection,
                read_config)
 from .elastic_cvr_extract import CvrConnection
+from .elastic_reg_extract import RegistrationConnection
 from . import cvr_makedb
 
 class Commands:
@@ -23,6 +24,14 @@ class Commands:
         if not (create_query_indexes or create_views or create_tables):
             print('No command option given.')
             print('-t create_tables\n-v create views\n-i create indicesx')
+
+    @staticmethod
+    def get_regs():
+        interactive_ensure_config_exists()
+        setup_database_connection()
+        RegistrationConnection.insert_all()
+        #regconn.get_all()
+        
     
     @staticmethod
     def update(use_address, resume):
@@ -70,7 +79,9 @@ parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='command')
 subparsers.required = True
 
+reg_update = subparsers.add_parser('get_regs', help='get data from registration database')
 parser_update = subparsers.add_parser('update', help='update data from erst')
+
 parser_update.add_argument('-a', '--use_address',
                            dest='use_address',
                            help='Enable Address Parsing - Requires Dawa download first - and is slower',
