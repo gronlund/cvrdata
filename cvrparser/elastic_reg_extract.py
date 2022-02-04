@@ -3,7 +3,6 @@ from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 from collections import namedtuple
 import datetime
-import ujson as json
 import os
 import pytz
 import tqdm
@@ -180,6 +179,7 @@ def add_logging(name):
     logger.addHandler(ch)
     logger.addHandler(fh)
     return logger
+
     
 def reg_producer(queue, lock):
     """ Producer function that places data to be inserted on the Queue
@@ -266,20 +266,23 @@ def reg_consumer(queue, lock):
     data = []
     while True:
         i = i+1        
-        for repeats in range(30):
+        for repeats in range(100):
+            #obj = regconn.cvr_nothing
+            obj = None
             try:
-                obj = queue.get(timeout=10)
+                obj = queue.get(timeout=15)
                 break
             except Exception as e:
                 logger.debug('Consumer timeout - repeats {1}, retrying - e: {0} '.format(e, repeats))
         try:  # move this
             if obj == regconn.reg_sentinel:
-                logger.info('sentinel found - Thats it im out of here')
+                logger.info('Sentinel found - Thats it im out of here')
                 break
             elif obj == regconn.cvr_nothing:
                 logger.debug('Nothing returned for consumer in long time - breaking')
                 break
-            data.append(obj)
+            if obj is not None:
+                data.append(obj)
             if len(data) >= regconn.update_batch_size:
                 #t0 = time.time()
                 regconn.insert_registrations(data)            
@@ -297,7 +300,7 @@ def reg_consumer(queue, lock):
 
     logger.debug('Consumer empty cache')
     if len(data) > 0:
-        regconn.insert_data(data)
+        regconn.insert_registrations(data)
     t1 = time.time()
     with lock:
         print('{0} Done. Exiting - time used {1}'.format(name, t1-t0))

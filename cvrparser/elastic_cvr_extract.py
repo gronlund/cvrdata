@@ -822,6 +822,7 @@ def cvr_update_consumer(queue, lock):
         # try:
         i = i+1        
         for repeats in range(30):
+            obj = None
             try:
                 #logger.info('get data {0}'.format(i))
                 obj = queue.get(timeout=10)
@@ -836,6 +837,8 @@ def cvr_update_consumer(queue, lock):
             elif obj == cvr.cvr_nothing:
                 logger.debug('Nothing returned for consumer in long time - breaking')
                 break
+            if obj is None:
+                continue
             #logger.info('Got some data {0}'.format(i))
             assert len(obj) == 3, 'obj not length 2 - should be tuple of length 3'
             dict_type = obj[0]
