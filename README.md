@@ -44,4 +44,4 @@ To update the cvr database run
 
 To insert DBA registrations run
 
-``python -m cvrparser get_reg ``
+``python -m cvrparser get_regs ``
