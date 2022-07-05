@@ -38,7 +38,7 @@ requests == 2.20.0
 tqdm >= 4.19.4
 # cvrparser/cvr_download.py: 4
 # cvrparser/elastic_cvr_extract.py: 5
-ujson == 1.35
+ujson == 5.4.0
 
 
 # cvrparser/field_parser.py: 2
