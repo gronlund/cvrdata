@@ -42,6 +42,8 @@ To update the cvr database run
 
 ``python -m cvrparser update ``
 
+Notice that running from an empty database is faster than updating and existing but old version of the data.
+
 To insert DBA registrations run
 
 ``python -m cvrparser get_regs ``
