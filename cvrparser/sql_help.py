@@ -63,26 +63,33 @@ class SessionKeystoreCache(SessionCache):
         # t0 = time.time()
         # session = create_session()
         # does not update the keystore which may be a problem
-
-        while True:
+        success = False
+        for i in range(10):
             missing = sorted(self.keystore.update())
             session = create_session()
             try:
                 z = [{x: y for (x, y) in zip(self.fields, c)} for (key, c) in self.cache if key in missing]
                 session.bulk_insert_mappings(self.table_class, z, render_nulls=True)
                 session.commit()
+                success = True
                 break
             except Exception as e:
                 #logger = logging.getLogger('consumer-{0}'.format(os.getpid()))
-                #logger.debug('Session Keystore Cache Error: e: {0}'.format(e)) 
-                add_error('SessionKeyStoreCache: \n{0}'.format(e))
+                #logger.debug('Session Keystore Cache Error: e: {0}'.format(e))
+                add_error('SessionKeyStoreCache: \n{0} - attempt {1}'.format(e, i))
                 session.rollback()
+
+                if i > 8:
+                    add_error('SessionKeyStoreCache: \n{0} - attempt {1} - data {2} '.format(e, i, str(z)))                
             finally:
                 session.close()
         # t1 = time.time()
         # total = t1 - t0
         # print('keystore cache', self.table_class)
-        self.cache = []
+        if success:
+            self.cache = []
+        else:
+            raise Exception('CANNOT INSERT {0}'.format(z))
 
 
 class SessionUpdateCache(SessionCache):
@@ -111,7 +118,7 @@ class SessionUpdateCache(SessionCache):
         flatten_dat = [x+y for (x, y) in self.cache]
         z = [{x: y for (x, y) in zip(self.fields, c)} for c in flatten_dat]
         session = create_session()
-        for i in range(2):
+        for i in range(5):
             try:
                 session.query(self.table_class).filter(tuple_(*self.key_columns).in_(keys)).with_for_update().delete(synchronize_session=False)
                 
@@ -122,7 +129,7 @@ class SessionUpdateCache(SessionCache):
             except Exception as e:
                 #logger = logging.getLogger('consumer-{0}'.format(os.getpid()))
                 #logger.debug('Session Updace Cache Error: e: {0}'.format(e)) 
-                print('session update failure', e)
+                #print('session update failure', e)
                 session.rollback()
                 add_error('SessionUpdateCache: \n{0}'.format(e))
                 #logging.info('Deadlock issue in delete insert - RETRY\n{0}'.format(e))
