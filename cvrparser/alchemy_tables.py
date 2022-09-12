@@ -229,7 +229,7 @@ class Enhedsrelation(Base):
 class Kontaktinfo(Base):
     __tablename__ = 'Kontaktinfo'
     oplysningid = Column(Integer, primary_key=True)
-    kontaktoplysning = Column(String(255, 'utf8mb4_bin'), nullable=False, unique=True)
+    kontaktoplysning = Column(String(2**11, 'utf8mb4_bin'), nullable=False, unique=True)
 
 
 
