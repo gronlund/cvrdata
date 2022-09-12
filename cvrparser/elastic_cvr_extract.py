@@ -234,7 +234,11 @@ class CvrConnection(object):
             # dict_type = data_dict['_type']
             # print('data dict', data_dict)
             #dict_type = data_dict['_type']
-            data_dict = _data_dict.to_dict()
+            try:
+                data_dict = _data_dict.to_dict()
+            except Exception as e:
+                data_dict = _data_dict
+            
             keys = data_dict['_source'].keys()
             dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
             if len(dict_type_set) != 1:
@@ -550,7 +554,9 @@ class CvrConnection(object):
         return update_dicts
 
     def optimize_download_updated(self, update_info):
-        """ Due to a missing sidstopdateret for employment updates in cvr
+        """ DEPRECATED
+
+        Due to a missing sidstopdateret for employment updates in cvr
         the sidstopdateret may be inaccurate and thus way to far back in time
         Update the self.max_download_size oldest to see if that helps us use a reasonable sidstopdateret data
         maybe it is actually the punits that gives the biggest issue here.

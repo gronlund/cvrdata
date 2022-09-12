@@ -64,7 +64,7 @@ class SessionKeystoreCache(SessionCache):
         # session = create_session()
         # does not update the keystore which may be a problem
         success = False
-        for i in range(10):
+        for i in range(3):
             missing = sorted(self.keystore.update())
             session = create_session()
             try:
@@ -79,8 +79,10 @@ class SessionKeystoreCache(SessionCache):
                 add_error('SessionKeyStoreCache: \n{0} - attempt {1}'.format(e, i))
                 session.rollback()
 
-                if i > 8:
-                    add_error('SessionKeyStoreCache: \n{0} - attempt {1} - data {2} '.format(e, i, str(z)))                
+                if i == 2:
+                    add_error('SessionKeyStoreCache: \n{0} - attempt {1} - data {2} '.format(e, i, str(z)))
+                    for x in z:
+                        print(z)
             finally:
                 session.close()
         # t1 = time.time()

@@ -229,14 +229,14 @@ class Enhedsrelation(Base):
 class Kontaktinfo(Base):
     __tablename__ = 'Kontaktinfo'
     oplysningid = Column(Integer, primary_key=True)
-    kontaktoplysning = Column(String(2**11, 'utf8mb4_bin'), nullable=False, unique=True)
+    kontaktoplysning = Column(String(768, 'utf8mb4_bin'), nullable=False, unique=True)
 
 
 
 
 class Lastupdated(Base):
     __tablename__ = "LastUpdated"
-    updatetype = Column(String(128, 'utf8mb4_bin'), primary_key=True)
+    updatetype = Column(String(255, 'utf8mb4_bin'), primary_key=True)
     lastupdated = Column(DateTime, nullable=False)
 
 
@@ -390,7 +390,7 @@ class Virksomhedsform(Base):
 class Virksomhedsstatus(Base):
     __tablename__ = 'Virksomhedsstatus'
     virksomhedsstatusid = Column(Integer, primary_key=True)
-    virksomhedsstatus = Column(String(2**8, 'utf8mb4_bin'),
+    virksomhedsstatus = Column(String(768, 'utf8mb4_bin'),
                                nullable=False, unique=True)
 
 
