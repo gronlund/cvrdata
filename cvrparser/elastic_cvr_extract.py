@@ -24,7 +24,7 @@ import sys
 def update_all_mp(workers=1):
     # https://docs.python.org/3/howto/logging-cookbook.html
     lock = multiprocessing.Lock()
-    queue_size = 20000
+    queue_size = 30000
     queue = multiprocessing.Queue(maxsize=queue_size)  # maxsize=1000*1000*20)
     prod = multiprocessing.Process(target=cvr_update_producer, args=(queue, lock))
     # prod.daemon = True
@@ -157,7 +157,7 @@ class CvrConnection(object):
         return hits
 
     @staticmethod
-    def update_all(self):
+    def update_all(self, worker_count=3):
         """
         Update CVR Company Data
         download updates
@@ -165,7 +165,7 @@ class CvrConnection(object):
 
         rewrite to producer consumer.
         """
-        update_all_mp(3)
+        update_all_mp(worker_count)
         return
         # assert False, 'DEPRECATED'
         # session = create_session()
@@ -729,8 +729,9 @@ def cvr_update_producer(queue, lock):
                         logger.debug('Producer timeout failed {0} - retrying {1} - {2} - repeat: {3}'.format(str(e), enhedsnummer, dict_type, repeat))
                         if repeat > 10:
                             raise(e)
-                if (i % 10000 == 0):
+                if (i % 30000 == 0):
                     logger.debug('{0} rounds'.format(i))                    
+
             except Exception as e:
                 logger.debug('Producer exception: e: {0} - obj: {1}'.format(e, obj))
                 print('continue producer')

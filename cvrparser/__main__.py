@@ -34,11 +34,11 @@ class Commands:
         
     
     @staticmethod
-    def update(use_address, resume):
+    def update(use_address, resume, num_workers):
         interactive_ensure_config_exists()
         setup_database_connection()
         cvr = CvrConnection(update_address=use_address)
-        cvr.update_all(resume)
+        cvr.update_all(resume, num_workers)
 
     @staticmethod
     def query(enh, cvr, pid, **general_options):
@@ -94,6 +94,13 @@ parser_update.add_argument('-r', '--resume',
                            default=False,
                            action='store_true'
                            )
+parser_update.add_argument('-n', '--num_workers',
+                           dest='num_workers',
+                           help='speficfy number of workers.',
+                           default=3,
+                           type=int
+                           )
+
 
 parser_dawa = subparsers.add_parser('dawa',
                                     help='Download dawa address info and insert into sql database')
