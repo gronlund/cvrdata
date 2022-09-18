@@ -242,9 +242,9 @@ class CvrConnection(object):
             keys = data_dict['_source'].keys()
             dict_type_set = keys & CvrConnection.source_keymap.values()  # intersects the two key sets
             if len(dict_type_set) != 1:
-                import pdb
-                pdb.set_trace()
-                add_error('BAD DICT DOWNLOADED {0}'.format(data_dict))
+                #import pdb
+                #pdb.set_trace()
+                add_error('BAD DICT DOWNLOADED {0} - {1}'.format(data_dict, _data_dict))
                 continue
             key = dict_type_set.pop()
             # if dict_type not in self.source_keymap:
@@ -723,10 +723,10 @@ def cvr_update_producer(queue, lock):
 
                 for repeat in range(20):
                     try:
-                        queue.put((dict_type, dat, full_update), timeout=120)
+                        queue.put((dict_type, dat, full_update), timeout=60)
                         break
                     except Exception as e:
-                        logger.debug('Producer timeout failed {0} - retrying {1} - {2} - repeat: {3}'.format(str(e), enhedsnummer, dict_type, repeat))
+                        logger.debug('Producer timeout failed {0} - retrying {1} - {2} - repeat: {3} - queue full {4} (unreliable)'.format(str(e), enhedsnummer, dict_type, repeat, queue.full()))
                         if repeat > 10:
                             raise(e)
                 if (i % 30000 == 0):
