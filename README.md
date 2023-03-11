@@ -21,7 +21,7 @@ Run the following command:
 
 ``pip install git+https://github.com/gronlund/cvrdata``
 
-* Only works with elasticsearch 6 *
+*Only works with elasticsearch 6*
 
 #  Command Line Interface
 To use the program from the cmd line use
