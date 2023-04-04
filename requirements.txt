@@ -12,11 +12,11 @@ SQLAlchemy >= 1.4.0
 
 # cvrparser/cvr_download.py: 1
 # cvrparser/elastic_cvr_extract.py: 1
-elasticsearch >= 6.0.0,<7.0.0
+elasticsearch==6.8.2
 
 # cvrparser/cvr_download.py: 2
 # cvrparser/elastic_cvr_extract.py: 2
-elasticsearch_dsl >= 6.1.0,<7.0.0
+elasticsearch-dsl>=6.0.0,<7.0.0
 
 # cvrparser/adresse.py: 3
 numpy >= 1.13.3
